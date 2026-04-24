@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>計分 - PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="wake-lock-status">螢幕常亮：關閉</div>
+
+  <div class="score-page">
+    <div style="background:var(--bg);padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <button class="btn-back" onclick="goBack()">← 返回賽程</button>
+      <span id="match-category" style="color:var(--text3);font-size:0.85rem"></span>
+    </div>
+
+    <div class="score-section">
+      <div class="serving-label" id="team-label">載入中...</div>
+      <div class="main-score" id="display-score">--</div>
+      <div class="score-hint">發球方 - 接球方 - 號碼</div>
+    </div>
+
+    <div class="controls-section">
+      <div class="score-btns">
+        <button id="btn-a" class="btn-score" style="background:#00e676" onclick="rallyWin('A')">
+          <span id="name-a">隊伍 A</span>
+          <small>贏得此球</small>
+        </button>
+        <button id="btn-b" class="btn-score" style="background:#4fc3f7" onclick="rallyWin('B')">
+          <span id="name-b">隊伍 B</span>
+          <small>贏得此球</small>
+        </button>
+      </div>
+      <div class="util-btns">
+        <button class="btn-util" onclick="undo()">復原 (Undo)</button>
+        <button class="btn-util" onclick="resetMatch()">重置 (Reset)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Win overlay -->
+  <div class="win-overlay" id="win-overlay">
+    <div id="win-message" style="font-size:2.8rem;color:var(--primary);font-weight:900;line-height:1.2"></div>
+    <button class="btn-primary" style="width:200px;margin-top:8px" onclick="goBack()">返回賽程表</button>
+  </div>
+
+  <script type="module">
+    import { watchMatch, updateMatch, addMatchResult } from './js/db.js';
+    import { applyRallyWin, applyUndo, getDisplayScore, getSpeechScore } from './js/scoring.js';
+    import { speak } from './js/speech.js';
+
+    const params = new URLSearchParams(location.search);
+    const tid = params.get('tid');
+    const mid = params.get('mid');
+    if (!tid || !mid) { location.href = 'index.html'; }
+
+    const CAT_LABEL = { mens: '男雙', womens: '女雙', mixed: '混雙' };
+
+    let state = null;
+    let wakeLock = null;
+    let isFirstLoad = true;
+    let unsubscribe = null;
+
+    unsubscribe = watchMatch(tid, mid, async match => {
+      state = match;
+      renderUI();
+
+      if (isFirstLoad) {
+        isFirstLoad = false;
+        if (!match.isFinished && match.scoreA === 0 && match.scoreB === 0) speak('0, 0, 2');
+        return;
+      }
+
+      // Record match result exactly once
+      if (match.isFinished && !match.resultRecorded && match.teamAId && match.teamBId && match.winnerId) {
+        await updateMatch(tid, mid, { resultRecorded: true });
+        const winTeamId  = match.winnerId === 'A' ? match.teamAId : match.teamBId;
+        const loseTeamId = match.winnerId === 'A' ? match.teamBId : match.teamAId;
+        await addMatchResult(tid, winTeamId, loseTeamId).catch(console.error);
+      }
+    });
+
+    function renderUI() {
+      if (!state) return;
+      document.getElementById('display-score').textContent = getDisplayScore(state);
+      document.getElementById('team-label').textContent =
+        (state.servingTeam === 'A' ? state.teamAName : state.teamBName) + ' 發球';
+      document.getElementById('name-a').textContent = state.teamAName || '隊伍 A';
+      document.getElementById('name-b').textContent = state.teamBName || '隊伍 B';
+      document.getElementById('match-category').textContent = CAT_LABEL[state.category] || '';
+
+      if (state.isFinished) {
+        const winName = state.winnerId === 'A' ? state.teamAName : state.teamBName;
+        document.getElementById('win-message').textContent = winName + ' 獲勝！';
+        document.getElementById('win-overlay').style.display = 'flex';
+      } else {
+        document.getElementById('win-overlay').style.display = 'none';
+      }
+    }
+
+    window.rallyWin = async function(winner) {
+      if (!state || state.isFinished) return;
+      requestWakeLock();
+      const next = applyRallyWin(state, winner);
+      const { id, ...data } = next;
+      await updateMatch(tid, mid, data);
+      if (!next.isFinished) {
+        speak(getSpeechScore(next));
+      } else {
+        const winName = next.winnerId === 'A' ? next.teamAName : next.teamBName;
+        speak('比賽結束，' + winName + ' 獲勝');
+      }
+    };
+
+    window.undo = async function() {
+      if (!state) return;
+      const next = applyUndo(state);
+      if (next === state) return;
+      const { id, ...data } = next;
+      await updateMatch(tid, mid, data);
+    };
+
+    window.resetMatch = async function() {
+      if (!confirm('確定要重置此場比賽嗎？')) return;
+      await updateMatch(tid, mid, {
+        scoreA: 0, scoreB: 0, serverNum: 2, servingTeam: 'A',
+        isFinished: false, winnerId: null, resultRecorded: false, history: []
+      });
+      speak('0, 0, 2');
+    };
+
+    window.goBack = function() {
+      if (unsubscribe) unsubscribe();
+      location.href = 'tournament.html?id=' + tid;
+    };
+
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator && !wakeLock) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          document.getElementById('wake-lock-status').textContent = '螢幕常亮：開啟';
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (e) {}
+      }
+    }
+  </script>
+</body>
+</html>

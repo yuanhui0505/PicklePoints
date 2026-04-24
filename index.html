@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <span class="app-title">PicklePoints</span>
+    <button class="btn-ghost" style="font-size:0.85rem;padding:8px 14px"
+            onclick="location.href='admin.html'">管理後台</button>
+  </header>
+
+  <div class="page-content">
+    <div id="tournament-list">
+      <div class="empty-state">載入中...</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // Clear old service workers and caches from pickleball.html era
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+    }
+  </script>
+
+  <script type="module">
+    import { watchTournaments } from './js/db.js';
+
+    watchTournaments(render);
+
+    function render(list) {
+      const el = document.getElementById('tournament-list');
+      if (list.length === 0) {
+        el.innerHTML = '<div class="empty-state">目前沒有賽事<br>請前往管理後台建立</div>';
+        return;
+      }
+      el.innerHTML = list.map(t => `
+        <div class="card" onclick="location.href='tournament.html?id=${t.id}'">
+          <div class="card-row">
+            <div style="flex:1;min-width:0">
+              <div class="card-title">${esc(t.name)}</div>
+              <div class="card-sub">${t.year || ''}${t.description ? ' ・ ' + esc(t.description) : ''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+              <span class="badge ${t.isActive ? 'badge-active' : 'badge-finished'}">
+                ${t.isActive ? '進行中' : '已結束'}
+              </span>
+              <span style="color:#444;font-size:1.3rem;line-height:1">›</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () =>
+        navigator.serviceWorker.register('./service-worker.js').catch(() => {})
+      );
+    }
+  </script>
+</body>
+</html>

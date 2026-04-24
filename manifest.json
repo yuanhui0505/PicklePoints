@@ -1,7 +1,7 @@
 {
-  "name": "Pickleball Pro",
-  "short_name": "Pickleball",
-  "start_url": "./pickleball.html",
+  "name": "PicklePoints",
+  "short_name": "PicklePoints",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

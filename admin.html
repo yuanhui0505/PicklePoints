@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>管理後台 - PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Password Gate -->
+  <div id="auth-gate" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:16px">
+      <div style="text-align:center">
+        <div class="app-title" style="font-size:1.8rem;margin-bottom:8px">PicklePoints</div>
+        <div style="color:var(--text3);font-size:0.9rem">管理後台</div>
+      </div>
+      <div class="input-group">
+        <div class="input-label" id="pw-label">管理員密碼</div>
+        <input type="password" id="input-pw" placeholder="輸入密碼"
+               onkeydown="if(event.key==='Enter')login()">
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="login()">登入</button>
+      <div id="auth-error" style="color:var(--secondary);text-align:center;font-size:0.9rem;display:none"></div>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="admin-panel" style="display:none">
+    <header class="app-header">
+      <button class="btn-back" onclick="location.href='index.html'">← 首頁</button>
+      <span style="color:var(--text2);font-size:0.9rem">管理後台</span>
+      <button class="btn-ghost" style="font-size:0.8rem;padding:6px 12px" onclick="logout()">登出</button>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Tournaments -->
+      <div class="admin-section">
+        <div class="section-title">賽事管理</div>
+        <div id="admin-tournaments"><div class="empty-state" style="padding:20px">載入中...</div></div>
+        <button class="btn-primary" style="width:100%;margin-top:12px"
+                onclick="openModal('modal-add-tournament')">+ 新增賽事</button>
+      </div>
+
+      <!-- Teams (shown when a tournament is selected) -->
+      <div class="admin-section" id="teams-section" style="display:none">
+        <div class="section-title" id="teams-section-title">隊伍管理</div>
+        <div id="admin-teams"><div class="empty-state" style="padding:20px">尚無隊伍</div></div>
+        <button class="btn-primary" style="width:100%;margin-top:12px"
+                onclick="openModal('modal-add-team')">+ 新增隊伍</button>
+      </div>
+
+      <!-- Settings -->
+      <div class="admin-section">
+        <div class="section-title">設定</div>
+        <button class="btn-ghost" style="width:100%" onclick="openModal('modal-change-pw')">變更管理員密碼</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Add Tournament Modal -->
+  <div class="modal" id="modal-add-tournament">
+    <div class="modal-sheet">
+      <div class="modal-title">新增賽事</div>
+      <div class="input-group">
+        <div class="input-label">賽事名稱</div>
+        <input type="text" id="t-name" placeholder="例：2025 春季聯賽">
+      </div>
+      <div class="input-group">
+        <div class="input-label">年份</div>
+        <input type="number" id="t-year" value="2025">
+      </div>
+      <div class="input-group">
+        <div class="input-label">說明（選填）</div>
+        <input type="text" id="t-desc" placeholder="例：8 支隊伍參賽">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-add-tournament')">取消</button>
+        <button class="btn-primary" onclick="submitTournament()">建立</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Tournament Modal -->
+  <div class="modal" id="modal-edit-tournament">
+    <div class="modal-sheet">
+      <div class="modal-title">編輯賽事</div>
+      <input type="hidden" id="et-id">
+      <div class="input-group">
+        <div class="input-label">賽事名稱</div>
+        <input type="text" id="et-name">
+      </div>
+      <div class="input-group">
+        <div class="input-label">年份</div>
+        <input type="number" id="et-year">
+      </div>
+      <div class="input-group">
+        <div class="input-label">說明</div>
+        <input type="text" id="et-desc">
+      </div>
+      <div class="input-group">
+        <div class="input-label">狀態</div>
+        <select id="et-active">
+          <option value="1">進行中</option>
+          <option value="0">已結束</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-edit-tournament')">取消</button>
+        <button class="btn-primary" onclick="submitEditTournament()">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Team Modal -->
+  <div class="modal" id="modal-add-team">
+    <div class="modal-sheet">
+      <div class="modal-title">新增隊伍</div>
+      <div class="input-group">
+        <div class="input-label">隊名</div>
+        <input type="text" id="team-name" placeholder="例：小王/小明">
+      </div>
+      <div class="input-group">
+        <div class="input-label">成員（以逗號分隔）</div>
+        <input type="text" id="team-players" placeholder="例：小王, 小明">
+      </div>
+      <div class="input-group">
+        <div class="input-label">組別</div>
+        <select id="team-category">
+          <option value="mens">男雙</option>
+          <option value="womens">女雙</option>
+          <option value="mixed">混雙</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-add-team')">取消</button>
+        <button class="btn-primary" onclick="submitTeam()">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div class="modal" id="modal-change-pw">
+    <div class="modal-sheet">
+      <div class="modal-title">變更密碼</div>
+      <div class="input-group">
+        <div class="input-label">新密碼</div>
+        <input type="password" id="new-pw1" placeholder="輸入新密碼">
+      </div>
+      <div class="input-group">
+        <div class="input-label">確認新密碼</div>
+        <input type="password" id="new-pw2" placeholder="再次輸入">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-change-pw')">取消</button>
+        <button class="btn-primary" onclick="submitChangePw()">變更</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { getAdminHash, setAdminHash, watchTournaments, createTournament, updateTournament, deleteTournament,
+             watchTeams, createTeam, deleteTeam } from './js/db.js';
+    import { hashPassword, verifyPassword, isAdminAuthed, setAdminAuthed, clearAdminAuth } from './js/auth.js';
+
+    const CAT_LABEL = { mens: '男雙', womens: '女雙', mixed: '混雙' };
+
+    let allTournaments = [];
+    let selectedTid = null;
+    let teamsUnsub = null;
+
+    // ── Auth ─────────────────────────────────────────────────
+    if (isAdminAuthed()) showPanel();
+
+    window.login = async function() {
+      const pw = document.getElementById('input-pw').value.trim();
+      if (!pw) return;
+
+      const stored = await getAdminHash();
+
+      if (!stored) {
+        // First-time setup
+        if (pw.length < 4) { showError('密碼至少 4 個字元'); return; }
+        await setAdminHash(await hashPassword(pw));
+        setAdminAuthed();
+        showPanel();
+        return;
+      }
+
+      if (await verifyPassword(pw, stored)) {
+        setAdminAuthed();
+        showPanel();
+      } else {
+        showError('密碼錯誤');
+      }
+    };
+
+    window.logout = function() {
+      clearAdminAuth();
+      location.reload();
+    };
+
+    function showPanel() {
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+      startWatchingTournaments();
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    // ── Tournaments ──────────────────────────────────────────
+    function startWatchingTournaments() {
+      watchTournaments(ts => {
+        allTournaments = ts;
+        renderTournaments();
+      });
+    }
+
+    function renderTournaments() {
+      const el = document.getElementById('admin-tournaments');
+      if (allTournaments.length === 0) {
+        el.innerHTML = '<div class="empty-state" style="padding:16px">尚無賽事</div>';
+        return;
+      }
+      el.innerHTML = allTournaments.map(t => `
+        <div class="card" style="cursor:default">
+          <div class="card-row">
+            <div style="flex:1;min-width:0">
+              <div class="card-title">${esc(t.name)}</div>
+              <div class="card-sub">${t.year || ''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span class="badge ${t.isActive ? 'badge-active' : 'badge-finished'}">${t.isActive ? '進行中' : '已結束'}</span>
+              <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
+                      onclick="location.href='tournament.html?id=${t.id}'">查看</button>
+              <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
+                      onclick="selectTournament('${t.id}','${esc(t.name)}')">隊伍</button>
+              <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
+                      onclick="openEditTournament('${t.id}')">編輯</button>
+              <button class="btn-icon danger"
+                      onclick="confirmDeleteTournament('${t.id}')">×</button>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    window.submitTournament = async function() {
+      const name = document.getElementById('t-name').value.trim();
+      if (!name) { showToast('請輸入賽事名稱'); return; }
+      await createTournament({
+        name,
+        year: document.getElementById('t-year').value || new Date().getFullYear(),
+        description: document.getElementById('t-desc').value.trim()
+      });
+      closeModal('modal-add-tournament');
+      document.getElementById('t-name').value = '';
+      document.getElementById('t-desc').value = '';
+      showToast('賽事已建立');
+    };
+
+    window.openEditTournament = function(id) {
+      const t = allTournaments.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById('et-id').value   = id;
+      document.getElementById('et-name').value = t.name;
+      document.getElementById('et-year').value = t.year || '';
+      document.getElementById('et-desc').value = t.description || '';
+      document.getElementById('et-active').value = t.isActive ? '1' : '0';
+      openModal('modal-edit-tournament');
+    };
+
+    window.submitEditTournament = async function() {
+      const id   = document.getElementById('et-id').value;
+      const name = document.getElementById('et-name').value.trim();
+      if (!name) { showToast('請輸入賽事名稱'); return; }
+      await updateTournament(id, {
+        name,
+        year: Number(document.getElementById('et-year').value),
+        description: document.getElementById('et-desc').value.trim(),
+        isActive: document.getElementById('et-active').value === '1'
+      });
+      closeModal('modal-edit-tournament');
+      showToast('已儲存');
+    };
+
+    window.confirmDeleteTournament = async function(id) {
+      if (confirm('確定刪除此賽事？隊伍和比賽資料不會自動刪除。')) {
+        await deleteTournament(id);
+        if (selectedTid === id) closeTeamsSection();
+        showToast('已刪除');
+      }
+    };
+
+    // ── Teams ────────────────────────────────────────────────
+    window.selectTournament = function(tid, name) {
+      selectedTid = tid;
+      document.getElementById('teams-section').style.display = 'block';
+      document.getElementById('teams-section-title').textContent = `隊伍管理 ── ${name}`;
+      if (teamsUnsub) teamsUnsub();
+      teamsUnsub = watchTeams(tid, renderTeams);
+      document.getElementById('teams-section').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    function closeTeamsSection() {
+      selectedTid = null;
+      if (teamsUnsub) { teamsUnsub(); teamsUnsub = null; }
+      document.getElementById('teams-section').style.display = 'none';
+    }
+
+    function renderTeams(teams) {
+      const el = document.getElementById('admin-teams');
+      if (teams.length === 0) {
+        el.innerHTML = '<div class="empty-state" style="padding:16px">尚無隊伍</div>';
+        return;
+      }
+      el.innerHTML = teams.map(t => `
+        <div class="card" style="cursor:default">
+          <div class="card-row">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span class="card-title">${esc(t.name)}</span>
+                <span class="badge badge-${t.category}">${CAT_LABEL[t.category] || t.category}</span>
+              </div>
+              <div class="card-sub">${(t.players || []).map(esc).join(' / ')}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span style="color:var(--primary);font-weight:bold;font-size:0.95rem">${t.points || 0} 分</span>
+              <button class="btn-icon danger" onclick="confirmDeleteTeam('${t.id}')">×</button>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    window.submitTeam = async function() {
+      if (!selectedTid) { showToast('請先選擇賽事'); return; }
+      const name = document.getElementById('team-name').value.trim();
+      if (!name) { showToast('請輸入隊名'); return; }
+      const players = document.getElementById('team-players').value
+        .split(',').map(s => s.trim()).filter(Boolean);
+      await createTeam(selectedTid, {
+        name, players, category: document.getElementById('team-category').value
+      });
+      closeModal('modal-add-team');
+      document.getElementById('team-name').value = '';
+      document.getElementById('team-players').value = '';
+      showToast('隊伍已新增');
+    };
+
+    window.confirmDeleteTeam = async function(teamId) {
+      if (!selectedTid) return;
+      if (confirm('確定刪除此隊伍？')) {
+        await deleteTeam(selectedTid, teamId);
+        showToast('已刪除');
+      }
+    };
+
+    // ── Change Password ───────────────────────────────────────
+    window.submitChangePw = async function() {
+      const p1 = document.getElementById('new-pw1').value;
+      const p2 = document.getElementById('new-pw2').value;
+      if (p1.length < 4) { showToast('密碼至少 4 個字元'); return; }
+      if (p1 !== p2)     { showToast('兩次密碼不一致'); return; }
+      await setAdminHash(await hashPassword(p1));
+      closeModal('modal-change-pw');
+      document.getElementById('new-pw1').value = '';
+      document.getElementById('new-pw2').value = '';
+      showToast('密碼已更新');
+    };
+
+    // ── Utilities ────────────────────────────────────────────
+    window.openModal  = id => document.getElementById(id).classList.add('open');
+    window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Check if first time (no password set) to show hint
+    getAdminHash().then(h => {
+      if (!h) {
+        document.getElementById('pw-label').textContent = '設定管理員密碼（首次使用）';
+      }
+    });
+  </script>
+</body>
+</html>
