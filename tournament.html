@@ -208,21 +208,45 @@
     window.closeModal = id => document.getElementById(id).classList.remove('open');
 
     window.submitMatch = async function() {
-      const aId = document.getElementById('mc-team-a').value;
-      const bId = document.getElementById('mc-team-b').value;
-      if (!aId || !bId)          { showToast('請選擇隊伍'); return; }
-      if (aId === bId)           { showToast('請選擇不同的兩支隊伍'); return; }
+      const aId     = document.getElementById('mc-team-a').value;
+      const bId     = document.getElementById('mc-team-b').value;
+      const category = document.getElementById('mc-category').value;
+      if (!aId || !bId) { showToast('請選擇隊伍'); return; }
+      if (aId === bId)  { showToast('請選擇不同的兩支隊伍'); return; }
+
       const teamA = allTeams.find(t => t.id === aId);
       const teamB = allTeams.find(t => t.id === bId);
+
+      // Gender validation
+      const err = validateGender(teamA, category) || validateGender(teamB, category);
+      if (err) { showToast(err); return; }
+
       await createMatch(tid, {
         teamAId: aId, teamAName: teamA.name,
         teamBId: bId, teamBName: teamB.name,
-        category: document.getElementById('mc-category').value,
+        category,
         round: parseInt(document.getElementById('mc-round').value) || 1
       });
       closeModal('modal-add-match');
       showToast('比賽已新增');
     };
+
+    function validateGender(team, category) {
+      const genders = team.genders;
+      if (!genders || genders.length < 2) return null; // 無性別資料，略過驗證
+
+      const CAT_RULE = {
+        mens:   g => g.every(x => x === 'M'),
+        womens: g => g.every(x => x === 'F'),
+        mixed:  g => g.includes('M') && g.includes('F')
+      };
+      const CAT_DESC = { mens: '男雙（需兩位男性）', womens: '女雙（需兩位女性）', mixed: '混雙（需一男一女）' };
+
+      if (!CAT_RULE[category]?.(genders)) {
+        return `「${esc(team.name)}」性別不符 ${CAT_DESC[category]}`;
+      }
+      return null;
+    }
 
     window.confirmDeleteMatch = async function(mid) {
       if (confirm('確定刪除此場比賽？')) {

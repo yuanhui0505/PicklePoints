@@ -38,9 +38,9 @@ export function watchTeams(tid, cb) {
   return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 
-export async function createTeam(tid, { name, players = [], category }) {
+export async function createTeam(tid, { name, players = [], playerIds = [], genders = [], category }) {
   return addDoc(collection(db, 'tournaments', tid, 'teams'), {
-    name, players, category, points: 0, wins: 0, losses: 0
+    name, players, playerIds, genders, category, points: 0, wins: 0, losses: 0
   });
 }
 
@@ -85,6 +85,21 @@ export async function updateMatch(tid, mid, data) {
 
 export async function deleteMatch(tid, mid) {
   return deleteDoc(doc(db, 'tournaments', tid, 'matches', mid));
+}
+
+// --- Players ---
+
+export function watchPlayers(tid, cb) {
+  const q = query(collection(db, 'tournaments', tid, 'players'), orderBy('name'));
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+
+export async function createPlayer(tid, { name, gender, duprId = '' }) {
+  return addDoc(collection(db, 'tournaments', tid, 'players'), { name, gender, duprId });
+}
+
+export async function deletePlayer(tid, playerId) {
+  return deleteDoc(doc(db, 'tournaments', tid, 'players', playerId));
 }
 
 // --- Admin Settings ---
