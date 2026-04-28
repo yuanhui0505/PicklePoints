@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>賽程管理 - PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <button class="btn-back" id="btn-back">← 管理</button>
+    <span id="t-name" style="color:var(--text2);font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%"></span>
+    <div style="width:48px"></div>
+  </header>
+
+  <div class="page-content">
+    <div class="section-title">賽程管理</div>
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-btn active" data-cat="all"    onclick="setFilter('all')">全部</button>
+      <button class="filter-btn"        data-cat="mens"   onclick="setFilter('mens')">男雙</button>
+      <button class="filter-btn"        data-cat="womens" onclick="setFilter('womens')">女雙</button>
+      <button class="filter-btn"        data-cat="mixed"  onclick="setFilter('mixed')">混雙</button>
+    </div>
+    <div id="matches-list"><div class="empty-state">載入中...</div></div>
+    <button class="btn-primary" style="width:100%;margin-top:12px"
+            onclick="openModal('modal-add-match')">+ 新增比賽</button>
+  </div>
+
+  <!-- Add Match Modal -->
+  <div class="modal" id="modal-add-match">
+    <div class="modal-sheet">
+      <div class="modal-title">新增比賽</div>
+      <div class="input-group">
+        <div class="input-label">組別</div>
+        <select id="mc-category" onchange="populateTeamSelects()">
+          <option value="mens">男雙</option>
+          <option value="womens">女雙</option>
+          <option value="mixed">混雙</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <div class="input-label">隊伍 A</div>
+        <select id="mc-team-a"><option value="">請先新增隊伍</option></select>
+      </div>
+      <div class="input-group">
+        <div class="input-label">隊伍 B</div>
+        <select id="mc-team-b"><option value="">請先新增隊伍</option></select>
+      </div>
+      <div class="input-group">
+        <div class="input-label">輪次</div>
+        <input type="number" id="mc-round" value="1" min="1">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-add-match')">取消</button>
+        <button class="btn-primary" onclick="submitMatch()">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { watchTournament, watchMatches, watchTeams, createMatch, deleteMatch } from './js/db.js';
+    import { isAdminAuthed } from './js/auth.js';
+
+    if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
+
+    const params = new URLSearchParams(location.search);
+    const tid = params.get('id');
+    if (!tid) { location.href = 'admin.html'; throw new Error('no tid'); }
+
+    const CAT_LABEL = { mens: '男雙', womens: '女雙', mixed: '混雙' };
+    const CAT_BADGE = { mens: 'badge-mens', womens: 'badge-womens', mixed: 'badge-mixed' };
+
+    let allMatches = [];
+    let allTeams   = [];
+    let curFilter  = 'all';
+
+    document.getElementById('btn-back').onclick = () => location.href = `manage.html?id=${tid}`;
+
+    watchTournament(tid, t => {
+      document.getElementById('t-name').textContent = t.name;
+      document.title = '賽程 - ' + t.name;
+    });
+
+    watchMatches(tid, ms => { allMatches = ms; renderMatches(); });
+    watchTeams(tid, ts => { allTeams = ts; populateTeamSelects(); });
+
+    function renderMatches() {
+      const list = curFilter === 'all' ? allMatches : allMatches.filter(m => m.category === curFilter);
+      const el = document.getElementById('matches-list');
+      if (list.length === 0) {
+        el.innerHTML = '<div class="empty-state">此組別尚無比賽</div>';
+        return;
+      }
+      el.innerHTML = list.map(m => {
+        const scoreHtml = m.isFinished
+          ? `<span class="score-chip finished">${m.scoreA} - ${m.scoreB}（結束）</span>`
+          : `<span class="score-chip">${m.scoreA} - ${m.scoreB}</span>`;
+        return `
+          <div class="card">
+            <div class="card-row">
+              <div style="flex:1;min-width:0" onclick="goScoreboard('${m.id}')">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span class="badge ${CAT_BADGE[m.category] || ''}">${CAT_LABEL[m.category] || m.category}</span>
+                  <span style="color:var(--text3);font-size:0.8rem">R${m.round}</span>
+                </div>
+                <div class="card-title" style="font-size:1rem">${esc(m.teamAName)} vs ${esc(m.teamBName)}</div>
+                <div style="margin-top:5px">${scoreHtml}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+                <button class="btn-icon danger" onclick="event.stopPropagation();confirmDelete('${m.id}')">×</button>
+                <span style="color:var(--text3);font-size:1.3rem" onclick="goScoreboard('${m.id}')">›</span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    window.populateTeamSelects = function() {
+      const cat = document.getElementById('mc-category').value;
+      const filtered = cat ? allTeams.filter(t => t.category === cat) : allTeams;
+      ['mc-team-a', 'mc-team-b'].forEach(id => {
+        const sel = document.getElementById(id);
+        const cur = sel.value;
+        sel.innerHTML = filtered.length === 0
+          ? '<option value="">此組別尚無隊伍</option>'
+          : filtered.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+        if (cur) sel.value = cur;
+      });
+    };
+
+    window.setFilter = function(cat) {
+      curFilter = cat;
+      document.querySelectorAll('#filter-bar .filter-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.cat === cat));
+      renderMatches();
+    };
+
+    window.goScoreboard = function(mid) {
+      location.href = `scoreboard.html?tid=${tid}&mid=${mid}`;
+    };
+
+    window.submitMatch = async function() {
+      const aId     = document.getElementById('mc-team-a').value;
+      const bId     = document.getElementById('mc-team-b').value;
+      const category = document.getElementById('mc-category').value;
+      if (!aId || !bId) { showToast('請選擇隊伍'); return; }
+      if (aId === bId)  { showToast('請選擇不同的兩支隊伍'); return; }
+
+      const teamA = allTeams.find(t => t.id === aId);
+      const teamB = allTeams.find(t => t.id === bId);
+
+      const err = validateGender(teamA, category) || validateGender(teamB, category);
+      if (err) { showToast(err); return; }
+
+      await createMatch(tid, {
+        teamAId: aId, teamAName: teamA.name,
+        teamBId: bId, teamBName: teamB.name,
+        category,
+        round: parseInt(document.getElementById('mc-round').value) || 1
+      });
+      closeModal('modal-add-match');
+      showToast('比賽已新增');
+    };
+
+    function validateGender(team, category) {
+      const genders = team.genders;
+      if (!genders || genders.length < 2) return null;
+      const CAT_RULE = {
+        mens:   g => g.every(x => x === 'M'),
+        womens: g => g.every(x => x === 'F'),
+        mixed:  g => g.includes('M') && g.includes('F')
+      };
+      const CAT_DESC = { mens: '男雙（需兩位男性）', womens: '女雙（需兩位女性）', mixed: '混雙（需一男一女）' };
+      if (!CAT_RULE[category]?.(genders)) {
+        return `「${esc(team.name)}」性別不符 ${CAT_DESC[category]}`;
+      }
+      return null;
+    }
+
+    window.confirmDelete = async function(mid) {
+      if (confirm('確定刪除此場比賽？')) {
+        await deleteMatch(tid, mid);
+        showToast('已刪除');
+      }
+    };
+
+    window.openModal  = id => document.getElementById(id).classList.add('open');
+    window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

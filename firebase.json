@@ -1,0 +1,20 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      ".git",
+      "*.md",
+      "serve.json",
+      "plan.md5",
+      "firebase.json",
+      ".firebaserc",
+      "node_modules"
+    ],
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  }
+}

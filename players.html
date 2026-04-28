@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>參賽者管理 - PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <button class="btn-back" id="btn-back">← 管理</button>
+    <span id="t-name" style="color:var(--text2);font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%"></span>
+    <div style="width:48px"></div>
+  </header>
+
+  <div class="page-content">
+    <div class="section-title">參賽者管理</div>
+    <div id="players-list"><div class="empty-state">載入中...</div></div>
+    <button class="btn-primary" style="width:100%;margin-top:12px"
+            onclick="openModal('modal-add-player')">+ 新增參賽者</button>
+  </div>
+
+  <!-- Add Player Modal -->
+  <div class="modal" id="modal-add-player">
+    <div class="modal-sheet">
+      <div class="modal-title">新增參賽者</div>
+      <div class="input-group">
+        <div class="input-label">姓名</div>
+        <input type="text" id="p-name" placeholder="例：王小明">
+      </div>
+      <div class="input-group">
+        <div class="input-label">性別</div>
+        <select id="p-gender">
+          <option value="M">男</option>
+          <option value="F">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <div class="input-label">DUPR ID（選填）</div>
+        <input type="text" id="p-dupr" placeholder="例：4261234">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-add-player')">取消</button>
+        <button class="btn-primary" onclick="submitPlayer()">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Player Modal -->
+  <div class="modal" id="modal-edit-player">
+    <div class="modal-sheet">
+      <div class="modal-title">編輯參賽者</div>
+      <input type="hidden" id="ep-id">
+      <div class="input-group">
+        <div class="input-label">姓名</div>
+        <input type="text" id="ep-name" placeholder="例：王小明">
+      </div>
+      <div class="input-group">
+        <div class="input-label">性別</div>
+        <select id="ep-gender">
+          <option value="M">男</option>
+          <option value="F">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <div class="input-label">DUPR ID（選填）</div>
+        <input type="text" id="ep-dupr" placeholder="例：4261234">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-edit-player')">取消</button>
+        <button class="btn-primary" onclick="submitEdit()">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { watchTournament, watchPlayers, createPlayer, updatePlayer, deletePlayer } from './js/db.js';
+    import { isAdminAuthed } from './js/auth.js';
+
+    if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
+
+    const params = new URLSearchParams(location.search);
+    const tid = params.get('id');
+    if (!tid) { location.href = 'admin.html'; throw new Error('no tid'); }
+
+    document.getElementById('btn-back').onclick = () => location.href = `manage.html?id=${tid}`;
+
+    watchTournament(tid, t => {
+      document.getElementById('t-name').textContent = t.name;
+      document.title = '參賽者 - ' + t.name;
+    });
+
+    watchPlayers(tid, players => renderPlayers(players));
+
+    function renderPlayers(players) {
+      const el = document.getElementById('players-list');
+      if (players.length === 0) {
+        el.innerHTML = '<div class="empty-state">尚無參賽者<br>點下方按鈕新增</div>';
+        return;
+      }
+      el.innerHTML = players.map(p => `
+        <div class="card" style="cursor:default">
+          <div class="card-row">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span class="card-title" style="font-size:1rem">${esc(p.name)}</span>
+                <span class="badge" style="${p.gender === 'M'
+                  ? 'background:rgba(37,99,235,0.1);color:var(--blue)'
+                  : 'background:rgba(220,38,38,0.1);color:var(--danger)'}">
+                  ${p.gender === 'M' ? '男' : '女'}
+                </span>
+              </div>
+              ${p.duprId ? `<div class="card-sub">DUPR: ${esc(p.duprId)}</div>` : ''}
+            </div>
+            <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
+                    onclick="openEdit('${p.id}','${esc(p.name)}','${p.gender}','${esc(p.duprId||'')}')">編輯</button>
+            <button class="btn-icon danger" onclick="confirmDelete('${p.id}')">×</button>
+          </div>
+        </div>`).join('');
+    }
+
+    window.submitPlayer = async function() {
+      const name = document.getElementById('p-name').value.trim();
+      if (!name) { showToast('請輸入姓名'); return; }
+      await createPlayer(tid, {
+        name,
+        gender: document.getElementById('p-gender').value,
+        duprId: document.getElementById('p-dupr').value.trim()
+      });
+      closeModal('modal-add-player');
+      document.getElementById('p-name').value = '';
+      document.getElementById('p-dupr').value = '';
+      showToast('參賽者已新增');
+    };
+
+    window.openEdit = function(pid, name, gender, duprId) {
+      document.getElementById('ep-id').value     = pid;
+      document.getElementById('ep-name').value   = name;
+      document.getElementById('ep-gender').value = gender;
+      document.getElementById('ep-dupr').value   = duprId;
+      openModal('modal-edit-player');
+    };
+
+    window.submitEdit = async function() {
+      const pid  = document.getElementById('ep-id').value;
+      const name = document.getElementById('ep-name').value.trim();
+      if (!name) { showToast('請輸入姓名'); return; }
+      await updatePlayer(tid, pid, {
+        name,
+        gender: document.getElementById('ep-gender').value,
+        duprId: document.getElementById('ep-dupr').value.trim()
+      });
+      closeModal('modal-edit-player');
+      showToast('已儲存');
+    };
+
+    window.confirmDelete = async function(pid) {
+      if (confirm('確定刪除此參賽者？')) {
+        await deletePlayer(tid, pid);
+        showToast('已刪除');
+      }
+    };
+
+    window.openModal  = id => document.getElementById(id).classList.add('open');
+    window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

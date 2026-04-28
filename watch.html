@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>觀賽 - PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { overflow: hidden; background: #fff; }
+
+    .watch-page {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .watch-header {
+      background: var(--bg);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .watch-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      padding: 24px 20px;
+    }
+
+    .watch-teams {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .watch-team {
+      flex: 1;
+      text-align: center;
+    }
+
+    .watch-team-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .watch-team-score {
+      font-size: 5rem;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-a { color: #16a34a; }
+    .score-b { color: #2563eb; }
+
+    .watch-divider {
+      font-size: 2.5rem;
+      color: var(--border2);
+      font-weight: 300;
+      flex-shrink: 0;
+    }
+
+    .watch-server {
+      font-size: 0.95rem;
+      color: var(--text2);
+      font-weight: 600;
+      background: var(--primary-bg);
+      border: 1px solid var(--primary-dim);
+      border-radius: 20px;
+      padding: 6px 18px;
+    }
+
+    .watch-server-num {
+      font-size: 0.82rem;
+      color: var(--text3);
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    .watch-finished {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.97);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      z-index: 100;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .watch-win-text {
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+
+    .watch-final-score {
+      font-size: 1.2rem;
+      color: var(--text2);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="watch-page">
+    <div class="watch-header">
+      <button class="btn-back" onclick="goBack()">← 賽程表</button>
+      <span id="match-category" style="color:var(--text3);font-size:0.85rem"></span>
+      <span style="font-size:0.75rem;color:var(--text3)">觀賽</span>
+    </div>
+
+    <div class="watch-body">
+      <div class="watch-teams">
+        <div class="watch-team">
+          <div class="watch-team-name" id="name-a">—</div>
+          <div class="watch-team-score score-a" id="score-a">0</div>
+        </div>
+        <div class="watch-divider">:</div>
+        <div class="watch-team">
+          <div class="watch-team-name" id="name-b">—</div>
+          <div class="watch-team-score score-b" id="score-b">0</div>
+        </div>
+      </div>
+
+      <div id="server-info">
+        <div class="watch-server" id="server-label">載入中...</div>
+        <div class="watch-server-num" id="server-num"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finished overlay -->
+  <div class="watch-finished" id="overlay-finished">
+    <div class="watch-win-text" id="win-text"></div>
+    <div class="watch-final-score" id="final-score"></div>
+    <button class="btn-primary" style="width:200px;margin-top:8px" onclick="goBack()">返回賽程表</button>
+  </div>
+
+  <script type="module">
+    import { watchMatch } from './js/db.js';
+    import { getDisplayScore } from './js/scoring.js';
+
+    const params = new URLSearchParams(location.search);
+    const tid = params.get('tid');
+    const mid = params.get('mid');
+    if (!tid || !mid) { location.href = 'index.html'; throw new Error('missing params'); }
+
+    const CAT_LABEL = { mens: '男雙', womens: '女雙', mixed: '混雙' };
+
+    let unsubscribe = watchMatch(tid, mid, match => {
+      document.getElementById('name-a').textContent = match.teamAName || '隊伍 A';
+      document.getElementById('name-b').textContent = match.teamBName || '隊伍 B';
+      document.getElementById('score-a').textContent = match.scoreA ?? 0;
+      document.getElementById('score-b').textContent = match.scoreB ?? 0;
+      document.getElementById('match-category').textContent = CAT_LABEL[match.category] || '';
+      document.title = `${match.teamAName} vs ${match.teamBName} - PicklePoints`;
+
+      if (match.isFinished) {
+        const winName  = match.winnerId === 'A' ? match.teamAName : match.teamBName;
+        const loseName = match.winnerId === 'A' ? match.teamBName : match.teamAName;
+        document.getElementById('win-text').textContent = winName + ' 獲勝！';
+        document.getElementById('final-score').textContent =
+          `${match.scoreA} : ${match.scoreB}`;
+        document.getElementById('overlay-finished').style.display = 'flex';
+        document.getElementById('server-info').style.display = 'none';
+      } else {
+        document.getElementById('overlay-finished').style.display = 'none';
+        document.getElementById('server-info').style.display = 'block';
+        const serverName = match.servingTeam === 'A' ? match.teamAName : match.teamBName;
+        document.getElementById('server-label').textContent = serverName + ' 發球';
+        document.getElementById('server-num').textContent = `伺服器號碼：${match.serverNum ?? '—'}`;
+      }
+    });
+
+    window.goBack = function() {
+      if (unsubscribe) unsubscribe();
+      location.href = 'tournament.html?id=' + tid;
+    };
+  </script>
+</body>
+</html>

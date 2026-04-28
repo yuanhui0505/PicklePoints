@@ -98,6 +98,10 @@ export async function createPlayer(tid, { name, gender, duprId = '' }) {
   return addDoc(collection(db, 'tournaments', tid, 'players'), { name, gender, duprId });
 }
 
+export async function updatePlayer(tid, playerId, data) {
+  return updateDoc(doc(db, 'tournaments', tid, 'players', playerId), data);
+}
+
 export async function deletePlayer(tid, playerId) {
   return deleteDoc(doc(db, 'tournaments', tid, 'players', playerId));
 }

@@ -45,22 +45,6 @@
                 onclick="openModal('modal-add-tournament')">+ 新增賽事</button>
       </div>
 
-      <!-- Players (shown when tournament selected) -->
-      <div class="admin-section" id="players-section" style="display:none">
-        <div class="section-title" id="players-section-title">參賽者管理</div>
-        <div id="admin-players"><div class="empty-state" style="padding:16px">尚無參賽者</div></div>
-        <button class="btn-primary" style="width:100%;margin-top:12px"
-                onclick="openModal('modal-add-player')">+ 新增參賽者</button>
-      </div>
-
-      <!-- Teams (shown when tournament selected) -->
-      <div class="admin-section" id="teams-section" style="display:none">
-        <div class="section-title" id="teams-section-title">隊伍管理</div>
-        <div id="admin-teams"><div class="empty-state" style="padding:16px">尚無隊伍</div></div>
-        <button class="btn-primary" style="width:100%;margin-top:12px"
-                onclick="openModal('modal-add-team')">+ 新增隊伍</button>
-      </div>
-
       <!-- Settings -->
       <div class="admin-section">
         <div class="section-title">設定</div>
@@ -124,63 +108,6 @@
     </div>
   </div>
 
-  <!-- Add Player Modal -->
-  <div class="modal" id="modal-add-player">
-    <div class="modal-sheet">
-      <div class="modal-title">新增參賽者</div>
-      <div class="input-group">
-        <div class="input-label">姓名</div>
-        <input type="text" id="p-name" placeholder="例：王小明">
-      </div>
-      <div class="input-group">
-        <div class="input-label">性別</div>
-        <select id="p-gender">
-          <option value="M">男</option>
-          <option value="F">女</option>
-        </select>
-      </div>
-      <div class="input-group">
-        <div class="input-label">DUPR ID（選填）</div>
-        <input type="text" id="p-dupr" placeholder="例：4261234">
-      </div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal('modal-add-player')">取消</button>
-        <button class="btn-primary" onclick="submitPlayer()">新增</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add Team Modal -->
-  <div class="modal" id="modal-add-team">
-    <div class="modal-sheet">
-      <div class="modal-title">新增隊伍</div>
-      <div class="input-group">
-        <div class="input-label">參賽者 1</div>
-        <select id="team-p1" onchange="onPlayerSelect()">
-          <option value="">請先新增參賽者</option>
-        </select>
-      </div>
-      <div class="input-group">
-        <div class="input-label">參賽者 2</div>
-        <select id="team-p2" onchange="onPlayerSelect()">
-          <option value="">請先新增參賽者</option>
-        </select>
-      </div>
-      <div class="input-group">
-        <div class="input-label">隊名（自動產生，可修改）</div>
-        <input type="text" id="team-name" placeholder="例：王小明/李小華">
-      </div>
-      <div id="team-category-display"
-           style="padding:10px 14px;border-radius:10px;background:#111;border:1px solid #333;color:var(--text3);font-size:0.95rem">
-        請選擇兩位參賽者
-      </div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal('modal-add-team')">取消</button>
-        <button class="btn-primary" onclick="submitTeam()">新增</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Change Password Modal -->
   <div class="modal" id="modal-change-pw">
     <div class="modal-sheet">
@@ -204,20 +131,10 @@
 
   <script type="module">
     import { getAdminHash, setAdminHash,
-             watchTournaments, createTournament, updateTournament, deleteTournament,
-             watchPlayers, createPlayer, deletePlayer,
-             watchTeams, createTeam, deleteTeam } from './js/db.js';
+             watchTournaments, createTournament, updateTournament, deleteTournament } from './js/db.js';
     import { hashPassword, verifyPassword, isAdminAuthed, setAdminAuthed, clearAdminAuth } from './js/auth.js';
 
-    const CAT_LABEL  = { mens: '男雙', womens: '女雙', mixed: '混雙' };
-    const CAT_BADGE  = { mens: 'badge-mens', womens: 'badge-womens', mixed: 'badge-mixed' };
-    const GENDER_LABEL = { M: '男', F: '女' };
-
     let allTournaments = [];
-    let allPlayers     = [];
-    let selectedTid    = null;
-    let playersUnsub   = null;
-    let teamsUnsub     = null;
 
     // ── Auth ─────────────────────────────────────────────────
     if (isAdminAuthed()) showPanel();
@@ -268,7 +185,7 @@
               <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
                       onclick="location.href='tournament.html?id=${t.id}'">查看</button>
               <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
-                      onclick="selectTournament('${t.id}','${esc(t.name)}')">管理</button>
+                      onclick="location.href='manage.html?id=${t.id}'">管理</button>
               <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
                       onclick="openEditTournament('${t.id}')">編輯</button>
               <button class="btn-icon danger" onclick="confirmDeleteTournament('${t.id}')">×</button>
@@ -320,201 +237,6 @@
       if (confirm('確定刪除此賽事？隊伍和比賽資料不會自動刪除。')) {
         await deleteTournament(id);
         if (selectedTid === id) closeManageSections();
-        showToast('已刪除');
-      }
-    };
-
-    // ── Select Tournament (管理) ─────────────────────────────
-    window.selectTournament = function(tid, name) {
-      selectedTid = tid;
-
-      document.getElementById('players-section').style.display = 'block';
-      document.getElementById('players-section-title').textContent = `參賽者管理 ── ${name}`;
-      document.getElementById('teams-section').style.display = 'block';
-      document.getElementById('teams-section-title').textContent = `隊伍管理 ── ${name}`;
-
-      if (playersUnsub) playersUnsub();
-      if (teamsUnsub)   teamsUnsub();
-
-      playersUnsub = watchPlayers(tid, players => {
-        allPlayers = players;
-        renderPlayers(players);
-        populatePlayerSelects();
-      });
-      teamsUnsub = watchTeams(tid, renderTeams);
-
-      document.getElementById('players-section').scrollIntoView({ behavior: 'smooth' });
-    };
-
-    function closeManageSections() {
-      selectedTid = null;
-      if (playersUnsub) { playersUnsub(); playersUnsub = null; }
-      if (teamsUnsub)   { teamsUnsub();   teamsUnsub   = null; }
-      document.getElementById('players-section').style.display = 'none';
-      document.getElementById('teams-section').style.display   = 'none';
-    }
-
-    // ── Players ──────────────────────────────────────────────
-    function renderPlayers(players) {
-      const el = document.getElementById('admin-players');
-      if (players.length === 0) {
-        el.innerHTML = '<div class="empty-state" style="padding:16px">尚無參賽者</div>';
-        return;
-      }
-      el.innerHTML = players.map(p => `
-        <div class="card" style="cursor:default">
-          <div class="card-row">
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span class="card-title" style="font-size:1rem">${esc(p.name)}</span>
-                <span class="badge" style="${p.gender === 'M'
-                  ? 'background:rgba(79,195,247,0.15);color:var(--blue)'
-                  : 'background:rgba(255,82,82,0.15);color:var(--secondary)'}">
-                  ${p.gender === 'M' ? '男' : '女'}
-                </span>
-              </div>
-              ${p.duprId ? `<div class="card-sub">DUPR: ${esc(p.duprId)}</div>` : ''}
-            </div>
-            <button class="btn-icon danger" onclick="confirmDeletePlayer('${p.id}')">×</button>
-          </div>
-        </div>`).join('');
-    }
-
-    function populatePlayerSelects() {
-      ['team-p1', 'team-p2'].forEach(id => {
-        const sel = document.getElementById(id);
-        const cur = sel.value;
-        sel.innerHTML = allPlayers.length === 0
-          ? '<option value="">請先新增參賽者</option>'
-          : '<option value="">請選擇參賽者</option>' +
-            allPlayers.map(p =>
-              `<option value="${p.id}">${esc(p.name)} (${p.gender === 'M' ? '男' : '女'})${p.duprId ? ' DUPR:' + p.duprId : ''}</option>`
-            ).join('');
-        if (cur) sel.value = cur;
-      });
-    }
-
-    window.submitPlayer = async function() {
-      if (!selectedTid) { showToast('請先選擇賽事'); return; }
-      const name = document.getElementById('p-name').value.trim();
-      if (!name) { showToast('請輸入姓名'); return; }
-      await createPlayer(selectedTid, {
-        name,
-        gender: document.getElementById('p-gender').value,
-        duprId: document.getElementById('p-dupr').value.trim()
-      });
-      closeModal('modal-add-player');
-      document.getElementById('p-name').value = '';
-      document.getElementById('p-dupr').value = '';
-      showToast('參賽者已新增');
-    };
-
-    window.confirmDeletePlayer = async function(pid) {
-      if (!selectedTid) return;
-      if (confirm('確定刪除此參賽者？')) {
-        await deletePlayer(selectedTid, pid);
-        showToast('已刪除');
-      }
-    };
-
-    // ── Team player select → auto-fill name & category ───────
-    window.onPlayerSelect = function() {
-      const p1id = document.getElementById('team-p1').value;
-      const p2id = document.getElementById('team-p2').value;
-      const p1 = allPlayers.find(p => p.id === p1id);
-      const p2 = allPlayers.find(p => p.id === p2id);
-      const display = document.getElementById('team-category-display');
-
-      if (!p1 || !p2) {
-        display.textContent = '請選擇兩位參賽者';
-        display.style.color = 'var(--text3)';
-        return;
-      }
-
-      // Auto-fill name
-      const nameEl = document.getElementById('team-name');
-      if (!nameEl.dataset.userEdited) {
-        nameEl.value = `${p1.name}/${p2.name}`;
-      }
-
-      // Determine category
-      const cat = detectCategory(p1.gender, p2.gender);
-      display.textContent = `組別：${CAT_LABEL[cat]}`;
-      display.style.color = 'var(--primary)';
-      display.dataset.category = cat;
-    };
-
-    document.getElementById('team-name').addEventListener('input', function() {
-      this.dataset.userEdited = '1';
-    });
-
-    function detectCategory(g1, g2) {
-      if (g1 === 'M' && g2 === 'M') return 'mens';
-      if (g1 === 'F' && g2 === 'F') return 'womens';
-      return 'mixed';
-    }
-
-    // ── Teams ────────────────────────────────────────────────
-    function renderTeams(teams) {
-      const el = document.getElementById('admin-teams');
-      if (teams.length === 0) {
-        el.innerHTML = '<div class="empty-state" style="padding:16px">尚無隊伍</div>';
-        return;
-      }
-      el.innerHTML = teams.map(t => `
-        <div class="card" style="cursor:default">
-          <div class="card-row">
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span class="card-title" style="font-size:1rem">${esc(t.name)}</span>
-                <span class="badge ${CAT_BADGE[t.category] || ''}">${CAT_LABEL[t.category] || t.category}</span>
-              </div>
-              <div class="card-sub">${(t.players || []).map(esc).join(' / ')}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-              <span style="color:var(--primary);font-weight:bold;font-size:0.95rem">${t.points || 0} 分</span>
-              <button class="btn-icon danger" onclick="confirmDeleteTeam('${t.id}')">×</button>
-            </div>
-          </div>
-        </div>`).join('');
-    }
-
-    window.submitTeam = async function() {
-      if (!selectedTid) { showToast('請先選擇賽事'); return; }
-
-      const p1id = document.getElementById('team-p1').value;
-      const p2id = document.getElementById('team-p2').value;
-      if (!p1id || !p2id)  { showToast('請選擇兩位參賽者'); return; }
-      if (p1id === p2id)   { showToast('請選擇不同的兩位參賽者'); return; }
-
-      const p1 = allPlayers.find(p => p.id === p1id);
-      const p2 = allPlayers.find(p => p.id === p2id);
-      const name = document.getElementById('team-name').value.trim() || `${p1.name}/${p2.name}`;
-      const category = detectCategory(p1.gender, p2.gender);
-
-      await createTeam(selectedTid, {
-        name,
-        players: [p1.name, p2.name],
-        playerIds: [p1id, p2id],
-        genders: [p1.gender, p2.gender],
-        category
-      });
-
-      closeModal('modal-add-team');
-      // Reset form
-      document.getElementById('team-p1').value = '';
-      document.getElementById('team-p2').value = '';
-      document.getElementById('team-name').value = '';
-      delete document.getElementById('team-name').dataset.userEdited;
-      document.getElementById('team-category-display').textContent = '請選擇兩位參賽者';
-      document.getElementById('team-category-display').style.color = 'var(--text3)';
-      showToast('隊伍已新增');
-    };
-
-    window.confirmDeleteTeam = async function(teamId) {
-      if (!selectedTid) return;
-      if (confirm('確定刪除此隊伍？')) {
-        await deleteTeam(selectedTid, teamId);
         showToast('已刪除');
       }
     };

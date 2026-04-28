@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>賽事管理 - PicklePoints</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .manage-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 18px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .manage-card:active { background: var(--surface2); }
+    .manage-card-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .manage-card-info { flex: 1; }
+    .manage-card-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .manage-card-desc  { font-size: 0.82rem; color: var(--text3); }
+    .manage-card-arrow { color: var(--text3); font-size: 1.3rem; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <button class="btn-back" onclick="location.href='admin.html'">← 後台</button>
+    <span id="t-name" style="color:var(--text2);font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%"></span>
+    <div style="width:48px"></div>
+  </header>
+
+  <div class="page-content">
+    <div class="section-title" style="margin-bottom:16px">選擇管理項目</div>
+
+    <div class="manage-card" onclick="go('players.html')">
+      <div class="manage-card-icon">👤</div>
+      <div class="manage-card-info">
+        <div class="manage-card-title">參賽者管理</div>
+        <div class="manage-card-desc">新增、刪除參賽者，設定姓名與 DUPR</div>
+      </div>
+      <div class="manage-card-arrow">›</div>
+    </div>
+
+    <div class="manage-card" onclick="go('teams.html')">
+      <div class="manage-card-icon">🏓</div>
+      <div class="manage-card-info">
+        <div class="manage-card-title">隊伍管理</div>
+        <div class="manage-card-desc">建立雙打隊伍，系統自動判斷組別</div>
+      </div>
+      <div class="manage-card-arrow">›</div>
+    </div>
+
+    <div class="manage-card" onclick="go('matches.html')">
+      <div class="manage-card-icon">📋</div>
+      <div class="manage-card-info">
+        <div class="manage-card-title">賽程管理</div>
+        <div class="manage-card-desc">新增比賽場次、查看賽程與刪除</div>
+      </div>
+      <div class="manage-card-arrow">›</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { watchTournament } from './js/db.js';
+    import { isAdminAuthed } from './js/auth.js';
+
+    if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
+
+    const params = new URLSearchParams(location.search);
+    const tid = params.get('id');
+    if (!tid) { location.href = 'admin.html'; throw new Error('no tid'); }
+
+    watchTournament(tid, t => {
+      document.getElementById('t-name').textContent = t.name;
+      document.title = t.name + ' - 管理';
+    });
+
+    window.go = function(page) {
+      location.href = `${page}?id=${tid}`;
+    };
+  </script>
+</body>
+</html>
