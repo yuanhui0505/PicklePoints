@@ -18,52 +18,63 @@
 
     .watch-header {
       background: var(--bg);
-      padding: 10px 14px;
+      padding: 8px 14px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-shrink: 0;
+      min-height: 44px;
     }
 
+    /* 主要內容區塊：佔剩餘 100% 高度（header 之外） */
     .watch-body {
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      gap: 16px;
-      padding: 24px 20px;
+      justify-content: center;
+      padding: 6px 4px;
+      gap: 10px;
+      overflow: hidden;
     }
 
+    /* 隊伍分數區：佔 body 的絕大部分 */
     .watch-teams {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
       width: 100%;
-      max-width: 480px;
+      gap: 0;
+      min-height: 0;
     }
 
     .watch-team {
       flex: 1;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 0;
     }
 
     .watch-team-name {
-      font-size: 1.1rem;
+      font-size: clamp(1rem, 5.5vw, 3rem);
       font-weight: 700;
       color: var(--text);
-      margin-bottom: 6px;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
+      max-width: 95%;
     }
 
+    /* 分數：以 vw 為主（橫屏）、vh 為輔（直屏） */
     .watch-team-score {
-      font-size: 5rem;
+      font-size: min(38vw, 68vh);
       font-weight: 900;
-      line-height: 1;
+      line-height: 0.9;
       font-variant-numeric: tabular-nums;
     }
 
@@ -71,27 +82,22 @@
     .score-b { color: #2563eb; }
 
     .watch-divider {
-      font-size: 2.5rem;
+      font-size: min(9vw, 14vh);
       color: var(--border2);
       font-weight: 300;
       flex-shrink: 0;
     }
 
+    /* 發球資訊：固定在底部，小巧不搶版面 */
     .watch-server {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       color: var(--text2);
       font-weight: 600;
       background: var(--primary-bg);
       border: 1px solid var(--primary-dim);
       border-radius: 20px;
-      padding: 6px 18px;
-    }
-
-    .watch-server-num {
-      font-size: 0.82rem;
-      color: var(--text3);
-      margin-top: 4px;
-      text-align: center;
+      padding: 5px 16px;
+      flex-shrink: 0;
     }
 
     .watch-finished {
@@ -145,7 +151,6 @@
 
       <div id="server-info">
         <div class="watch-server" id="server-label">載入中...</div>
-        <div class="watch-server-num" id="server-num"></div>
       </div>
     </div>
   </div>
@@ -159,7 +164,6 @@
 
   <script type="module">
     import { watchMatch } from './js/db.js';
-    import { getDisplayScore } from './js/scoring.js';
 
     const params = new URLSearchParams(location.search);
     const tid = params.get('tid');
@@ -189,7 +193,6 @@
         document.getElementById('server-info').style.display = 'block';
         const serverName = match.servingTeam === 'A' ? match.teamAName : match.teamBName;
         document.getElementById('server-label').textContent = serverName + ' 發球';
-        document.getElementById('server-num').textContent = `伺服器號碼：${match.serverNum ?? '—'}`;
       }
     });
 
