@@ -82,7 +82,11 @@
     });
 
     window.go = function(page) {
-      location.href = `${page}?id=${tid}`;
+      if (page === 'players.html') {
+        location.href = 'players.html';
+      } else {
+        location.href = `${page}?id=${tid}`;
+      }
     };
   </script>
 </body>

@@ -3,29 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>參賽者管理 - PicklePoints</title>
+  <title>選手管理 - PicklePoints</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#000000">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="app-header">
-    <button class="btn-back" id="btn-back">← 管理</button>
-    <span id="t-name" style="color:var(--text2);font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%"></span>
+    <button class="btn-back" onclick="history.back()">← 返回</button>
+    <span style="color:var(--text2);font-size:0.9rem">全域選手管理</span>
     <div style="width:48px"></div>
   </header>
 
   <div class="page-content">
-    <div class="section-title">參賽者管理</div>
+    <div class="section-title">所有選手</div>
     <div id="players-list"><div class="empty-state">載入中...</div></div>
     <button class="btn-primary" style="width:100%;margin-top:12px"
-            onclick="openModal('modal-add-player')">+ 新增參賽者</button>
+            onclick="openModal('modal-add-player')">+ 新增選手</button>
   </div>
 
   <!-- Add Player Modal -->
   <div class="modal" id="modal-add-player">
     <div class="modal-sheet">
-      <div class="modal-title">新增參賽者</div>
+      <div class="modal-title">新增選手</div>
       <div class="input-group">
         <div class="input-label">姓名</div>
         <input type="text" id="p-name" placeholder="例：王小明">
@@ -51,11 +51,11 @@
   <!-- Edit Player Modal -->
   <div class="modal" id="modal-edit-player">
     <div class="modal-sheet">
-      <div class="modal-title">編輯參賽者</div>
+      <div class="modal-title">編輯選手</div>
       <input type="hidden" id="ep-id">
       <div class="input-group">
         <div class="input-label">姓名</div>
-        <input type="text" id="ep-name" placeholder="例：王小明">
+        <input type="text" id="ep-name">
       </div>
       <div class="input-group">
         <div class="input-label">性別</div>
@@ -66,7 +66,7 @@
       </div>
       <div class="input-group">
         <div class="input-label">DUPR ID（選填）</div>
-        <input type="text" id="ep-dupr" placeholder="例：4261234">
+        <input type="text" id="ep-dupr">
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal('modal-edit-player')">取消</button>
@@ -78,28 +78,17 @@
   <div id="toast" class="toast"></div>
 
   <script type="module">
-    import { watchTournament, watchPlayers, createPlayer, updatePlayer, deletePlayer } from './js/db.js';
+    import { watchGlobalPlayers, createGlobalPlayer, updateGlobalPlayer, deleteGlobalPlayer } from './js/db.js';
     import { isAdminAuthed } from './js/auth.js';
 
     if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
 
-    const params = new URLSearchParams(location.search);
-    const tid = params.get('id');
-    if (!tid) { location.href = 'admin.html'; throw new Error('no tid'); }
-
-    document.getElementById('btn-back').onclick = () => location.href = `manage.html?id=${tid}`;
-
-    watchTournament(tid, t => {
-      document.getElementById('t-name').textContent = t.name;
-      document.title = '參賽者 - ' + t.name;
-    });
-
-    watchPlayers(tid, players => renderPlayers(players));
+    watchGlobalPlayers(renderPlayers);
 
     function renderPlayers(players) {
       const el = document.getElementById('players-list');
       if (players.length === 0) {
-        el.innerHTML = '<div class="empty-state">尚無參賽者<br>點下方按鈕新增</div>';
+        el.innerHTML = '<div class="empty-state">尚無選手<br>點下方按鈕新增</div>';
         return;
       }
       el.innerHTML = players.map(p => `
@@ -116,9 +105,11 @@
               </div>
               ${p.duprId ? `<div class="card-sub">DUPR: ${esc(p.duprId)}</div>` : ''}
             </div>
-            <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
-                    onclick="openEdit('${p.id}','${esc(p.name)}','${p.gender}','${esc(p.duprId||'')}')">編輯</button>
-            <button class="btn-icon danger" onclick="confirmDelete('${p.id}')">×</button>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
+                      onclick="openEdit('${p.id}','${esc(p.name)}','${p.gender}','${esc(p.duprId||'')}')">編輯</button>
+              <button class="btn-icon danger" onclick="confirmDelete('${p.id}')">×</button>
+            </div>
           </div>
         </div>`).join('');
     }
@@ -126,7 +117,7 @@
     window.submitPlayer = async function() {
       const name = document.getElementById('p-name').value.trim();
       if (!name) { showToast('請輸入姓名'); return; }
-      await createPlayer(tid, {
+      await createGlobalPlayer({
         name,
         gender: document.getElementById('p-gender').value,
         duprId: document.getElementById('p-dupr').value.trim()
@@ -134,7 +125,7 @@
       closeModal('modal-add-player');
       document.getElementById('p-name').value = '';
       document.getElementById('p-dupr').value = '';
-      showToast('參賽者已新增');
+      showToast('選手已新增');
     };
 
     window.openEdit = function(pid, name, gender, duprId) {
@@ -149,7 +140,7 @@
       const pid  = document.getElementById('ep-id').value;
       const name = document.getElementById('ep-name').value.trim();
       if (!name) { showToast('請輸入姓名'); return; }
-      await updatePlayer(tid, pid, {
+      await updateGlobalPlayer(pid, {
         name,
         gender: document.getElementById('ep-gender').value,
         duprId: document.getElementById('ep-dupr').value.trim()
@@ -159,8 +150,8 @@
     };
 
     window.confirmDelete = async function(pid) {
-      if (confirm('確定刪除此參賽者？')) {
-        await deletePlayer(tid, pid);
+      if (confirm('確定刪除此選手？')) {
+        await deleteGlobalPlayer(pid);
         showToast('已刪除');
       }
     };

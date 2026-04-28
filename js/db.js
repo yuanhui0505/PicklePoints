@@ -87,23 +87,23 @@ export async function deleteMatch(tid, mid) {
   return deleteDoc(doc(db, 'tournaments', tid, 'matches', mid));
 }
 
-// --- Players ---
+// --- Players (global) ---
 
-export function watchPlayers(tid, cb) {
-  const q = query(collection(db, 'tournaments', tid, 'players'), orderBy('name'));
+export function watchGlobalPlayers(cb) {
+  const q = query(collection(db, 'players'), orderBy('name'));
   return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 
-export async function createPlayer(tid, { name, gender, duprId = '' }) {
-  return addDoc(collection(db, 'tournaments', tid, 'players'), { name, gender, duprId });
+export async function createGlobalPlayer({ name, gender, duprId = '' }) {
+  return addDoc(collection(db, 'players'), { name, gender, duprId });
 }
 
-export async function updatePlayer(tid, playerId, data) {
-  return updateDoc(doc(db, 'tournaments', tid, 'players', playerId), data);
+export async function updateGlobalPlayer(pid, data) {
+  return updateDoc(doc(db, 'players', pid), data);
 }
 
-export async function deletePlayer(tid, playerId) {
-  return deleteDoc(doc(db, 'tournaments', tid, 'players', playerId));
+export async function deleteGlobalPlayer(pid) {
+  return deleteDoc(doc(db, 'players', pid));
 }
 
 // --- Admin Settings ---

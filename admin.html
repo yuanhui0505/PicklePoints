@@ -45,6 +45,12 @@
                 onclick="openModal('modal-add-tournament')">+ 新增賽事</button>
       </div>
 
+      <!-- Players -->
+      <div class="admin-section">
+        <div class="section-title">選手管理</div>
+        <button class="btn-ghost" style="width:100%" onclick="location.href='players.html'">管理全域選手名單</button>
+      </div>
+
       <!-- Settings -->
       <div class="admin-section">
         <div class="section-title">設定</div>
@@ -64,7 +70,7 @@
       </div>
       <div class="input-group">
         <div class="input-label">年份</div>
-        <input type="number" id="t-year" value="2025">
+        <input type="number" id="t-year">
       </div>
       <div class="input-group">
         <div class="input-label">說明（選填）</div>
@@ -255,7 +261,12 @@
     };
 
     // ── Utilities ────────────────────────────────────────────
-    window.openModal  = id => document.getElementById(id).classList.add('open');
+    window.openModal  = id => {
+      if (id === 'modal-add-tournament') {
+        document.getElementById('t-year').value = new Date().getFullYear();
+      }
+      document.getElementById(id).classList.add('open');
+    };
     window.closeModal = id => document.getElementById(id).classList.remove('open');
 
     function showToast(msg) {
