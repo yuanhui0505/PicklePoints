@@ -140,6 +140,10 @@ export async function createManager({ name, username, passwordHash }) {
   return addDoc(collection(db, 'managers'), { name, username, passwordHash, createdAt: serverTimestamp() });
 }
 
+export async function updateManager(id, data) {
+  return updateDoc(doc(db, 'managers', id), data);
+}
+
 export async function deleteManager(id) {
   return deleteDoc(doc(db, 'managers', id));
 }

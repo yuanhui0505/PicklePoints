@@ -191,10 +191,10 @@
   <script type="module">
     import { getAdminHash, setAdminHash,
              watchTournaments, createTournament, updateTournament, deleteTournament,
-             watchManagers, createManager, deleteManager, getManagerByUsername } from './js/db.js';
+             watchManagers, createManager, updateManager, deleteManager, getManagerByUsername } from './js/db.js';
     import { hashPassword, verifyPassword,
              isAdminAuthed, setAdminAuthed, clearAdminAuth,
-             isManagerAuthed, setManagerAuthed, clearManagerAuth, getManagerName } from './js/auth.js';
+             isManagerAuthed, setManagerAuthed, clearManagerAuth, getManagerName, getManagerId } from './js/auth.js';
 
     let allTournaments = [];
     let allManagers    = [];
@@ -254,7 +254,7 @@
         const mgr = await getManagerByUsername(username);
         if (!mgr) { showError('帳號不存在'); return; }
         if (await verifyPassword(pw, mgr.passwordHash)) {
-          setManagerAuthed(mgr.name); showPanel('manager');
+          setManagerAuthed(mgr.name, mgr.id); showPanel('manager');
         } else {
           showError('密碼錯誤');
         }
@@ -406,7 +406,12 @@
       const p2 = document.getElementById('new-pw2').value;
       if (p1.length < 4) { showToast('密碼至少 4 個字元'); return; }
       if (p1 !== p2)     { showToast('兩次密碼不一致'); return; }
-      await setAdminHash(await hashPassword(p1));
+      const hash = await hashPassword(p1);
+      if (isAdminAuthed()) {
+        await setAdminHash(hash);
+      } else {
+        await updateManager(getManagerId(), { passwordHash: hash });
+      }
       closeModal('modal-change-pw');
       document.getElementById('new-pw1').value = '';
       document.getElementById('new-pw2').value = '';

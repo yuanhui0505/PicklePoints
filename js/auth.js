@@ -13,7 +13,14 @@ export const clearAdminAuth  = () => sessionStorage.removeItem('adminAuthed');
 
 export const isManagerAuthed  = () => !!sessionStorage.getItem('managerAuthed');
 export const getManagerName   = () => sessionStorage.getItem('managerAuthed') || '';
-export const setManagerAuthed = (name) => sessionStorage.setItem('managerAuthed', name);
-export const clearManagerAuth = () => sessionStorage.removeItem('managerAuthed');
+export const getManagerId     = () => sessionStorage.getItem('managerAuthedId') || '';
+export const setManagerAuthed = (name, id) => {
+  sessionStorage.setItem('managerAuthed', name);
+  sessionStorage.setItem('managerAuthedId', id);
+};
+export const clearManagerAuth = () => {
+  sessionStorage.removeItem('managerAuthed');
+  sessionStorage.removeItem('managerAuthedId');
+};
 
 export const isAnyAuthed = () => isAdminAuthed() || isManagerAuthed();
