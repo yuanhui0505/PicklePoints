@@ -69,6 +69,7 @@
     const CAT_BADGE = { mens: 'badge-mens', womens: 'badge-womens', mixed: 'badge-mixed' };
 
     let allPlayers = [];
+    let allTeams   = [];
 
     document.getElementById('btn-back').onclick = () => location.href = `manage.html?id=${tid}`;
 
@@ -82,7 +83,7 @@
       populatePlayerSelects();
     });
 
-    watchTeams(tid, renderTeams);
+    watchTeams(tid, teams => { allTeams = teams; renderTeams(teams); });
 
     function renderTeams(teams) {
       const el = document.getElementById('teams-list');
