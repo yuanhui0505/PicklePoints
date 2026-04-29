@@ -34,7 +34,7 @@
       <div class="modal-title">新增比賽</div>
       <div class="input-group">
         <div class="input-label">組別</div>
-        <select id="mc-category" onchange="populateTeamSelects()">
+        <select id="mc-category">
           <option value="mens">男雙</option>
           <option value="womens">女雙</option>
           <option value="mixed">混雙</option>
@@ -143,14 +143,12 @@
     };
 
     window.populateTeamSelects = function() {
-      const cat = document.getElementById('mc-category').value;
-      const filtered = cat ? allTeams.filter(t => t.category === cat) : allTeams;
       ['mc-team-a', 'mc-team-b'].forEach(id => {
         const sel = document.getElementById(id);
         const cur = sel.value;
-        sel.innerHTML = filtered.length === 0
-          ? '<option value="">此組別尚無隊伍</option>'
-          : filtered.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+        sel.innerHTML = allTeams.length === 0
+          ? '<option value="">請先新增隊伍</option>'
+          : allTeams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
         if (cur) sel.value = cur;
       });
     };
