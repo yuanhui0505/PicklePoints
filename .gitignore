@@ -1,0 +1,17 @@
+# Firebase
+.firebase/
+.firebaserc
+
+# Claude Code
+.agents/
+.claude/
+skills-lock.json
+
+# Dev tools
+node_modules/
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
