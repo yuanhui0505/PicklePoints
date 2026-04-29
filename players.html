@@ -79,9 +79,9 @@
 
   <script type="module">
     import { watchGlobalPlayers, createGlobalPlayer, updateGlobalPlayer, deleteGlobalPlayer } from './js/db.js';
-    import { isAdminAuthed } from './js/auth.js';
+    import { isAnyAuthed } from './js/auth.js';
 
-    if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
+    if (!isAnyAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
 
     let allPlayers = [];
 

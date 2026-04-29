@@ -54,13 +54,13 @@
     import { watchMatch, updateMatch, addMatchResult } from './js/db.js';
     import { applyRallyWin, applyUndo, getDisplayScore, getSpeechScore } from './js/scoring.js';
     import { speak } from './js/speech.js';
-    import { isAdminAuthed } from './js/auth.js';
+    import { isAnyAuthed } from './js/auth.js';
 
     const params = new URLSearchParams(location.search);
     const tid = params.get('tid');
     const mid = params.get('mid');
     if (!tid || !mid) { location.href = 'index.html'; throw new Error('missing params'); }
-    if (!isAdminAuthed()) { location.href = `watch.html?tid=${tid}&mid=${mid}`; throw new Error('unauthed'); }
+    if (!isAnyAuthed()) { location.href = `watch.html?tid=${tid}&mid=${mid}`; throw new Error('unauthed'); }
 
     const CAT_LABEL = { mens: '男雙', womens: '女雙', mixed: '混雙' };
 

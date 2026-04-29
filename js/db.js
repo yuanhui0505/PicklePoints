@@ -1,7 +1,7 @@
 import { db } from './firebase-config.js';
 import {
-  collection, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, increment
+  collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, where, serverTimestamp, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // --- Tournaments ---
@@ -119,4 +119,27 @@ export async function getAdminHash() {
 
 export async function setAdminHash(hash) {
   return setDoc(doc(db, 'settings', 'admin'), { passwordHash: hash }, { merge: true });
+}
+
+// --- Managers ---
+
+export function watchManagers(cb) {
+  const q = query(collection(db, 'managers'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+
+export async function getManagerByUsername(username) {
+  const q = query(collection(db, 'managers'), where('username', '==', username));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() };
+}
+
+export async function createManager({ name, username, passwordHash }) {
+  return addDoc(collection(db, 'managers'), { name, username, passwordHash, createdAt: serverTimestamp() });
+}
+
+export async function deleteManager(id) {
+  return deleteDoc(doc(db, 'managers', id));
 }

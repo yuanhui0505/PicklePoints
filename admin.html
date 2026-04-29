@@ -10,28 +10,49 @@
 </head>
 <body>
 
-  <!-- Password Gate -->
+  <!-- Auth Gate -->
   <div id="auth-gate" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
     <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:16px">
       <div style="text-align:center">
         <div class="app-title" style="font-size:1.8rem;margin-bottom:8px">PicklePoints</div>
         <div style="color:var(--text3);font-size:0.9rem">管理後台</div>
       </div>
+
+      <!-- Role Toggle -->
+      <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <button id="role-admin" onclick="setRole('admin')"
+          style="flex:1;padding:10px;border-radius:0;background:var(--primary);color:#fff;font-size:0.9rem">
+          系統管理者
+        </button>
+        <button id="role-manager" onclick="setRole('manager')"
+          style="flex:1;padding:10px;border-radius:0;background:var(--surface2);color:var(--text2);font-size:0.9rem">
+          賽程管理者
+        </button>
+      </div>
+
+      <!-- Manager username (hidden for admin) -->
+      <div class="input-group" id="field-username" style="display:none">
+        <div class="input-label">帳號</div>
+        <input type="text" id="input-username" placeholder="輸入帳號"
+               onkeydown="if(event.key==='Enter')document.getElementById('input-pw').focus()">
+      </div>
+
       <div class="input-group">
         <div class="input-label" id="pw-label">管理員密碼</div>
         <input type="password" id="input-pw" placeholder="輸入密碼"
                onkeydown="if(event.key==='Enter')login()">
       </div>
+
       <button class="btn-primary" style="width:100%" onclick="login()">登入</button>
-      <div id="auth-error" style="color:var(--secondary);text-align:center;font-size:0.9rem;display:none"></div>
+      <div id="auth-error" style="color:var(--danger);text-align:center;font-size:0.9rem;display:none"></div>
     </div>
   </div>
 
-  <!-- Admin Panel -->
-  <div id="admin-panel" style="display:none">
+  <!-- Main Panel -->
+  <div id="main-panel" style="display:none">
     <header class="app-header">
       <button class="btn-back" onclick="location.href='index.html'">← 首頁</button>
-      <span style="color:var(--text2);font-size:0.9rem">管理後台</span>
+      <span id="panel-role-label" style="color:var(--text2);font-size:0.9rem"></span>
       <button class="btn-ghost" style="font-size:0.8rem;padding:6px 12px" onclick="logout()">登出</button>
     </header>
 
@@ -51,10 +72,19 @@
         <button class="btn-ghost" style="width:100%" onclick="location.href='players.html'">管理全域選手名單</button>
       </div>
 
+      <!-- Manager Management (admin only) -->
+      <div class="admin-section" id="section-managers" style="display:none">
+        <div class="section-title">賽程管理者帳號</div>
+        <div id="managers-list"><div class="empty-state" style="padding:16px">載入中...</div></div>
+        <button class="btn-ghost" style="width:100%;margin-top:10px"
+                onclick="openModal('modal-add-manager')">+ 新增賽程管理者</button>
+      </div>
+
       <!-- Settings -->
       <div class="admin-section">
         <div class="section-title">設定</div>
-        <button class="btn-ghost" style="width:100%" onclick="openModal('modal-change-pw')">變更管理員密碼</button>
+        <button class="btn-ghost" style="width:100%" id="btn-change-pw"
+                onclick="openModal('modal-change-pw')">變更密碼</button>
       </div>
 
     </div>
@@ -114,6 +144,29 @@
     </div>
   </div>
 
+  <!-- Add Manager Modal -->
+  <div class="modal" id="modal-add-manager">
+    <div class="modal-sheet">
+      <div class="modal-title">新增賽程管理者</div>
+      <div class="input-group">
+        <div class="input-label">顯示名稱</div>
+        <input type="text" id="mgr-name" placeholder="例：王小明">
+      </div>
+      <div class="input-group">
+        <div class="input-label">登入帳號</div>
+        <input type="text" id="mgr-username" placeholder="例：wangxm">
+      </div>
+      <div class="input-group">
+        <div class="input-label">密碼</div>
+        <input type="password" id="mgr-pw" placeholder="至少 4 個字元">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('modal-add-manager')">取消</button>
+        <button class="btn-primary" onclick="submitManager()">新增</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Change Password Modal -->
   <div class="modal" id="modal-change-pw">
     <div class="modal-sheet">
@@ -137,32 +190,76 @@
 
   <script type="module">
     import { getAdminHash, setAdminHash,
-             watchTournaments, createTournament, updateTournament, deleteTournament } from './js/db.js';
-    import { hashPassword, verifyPassword, isAdminAuthed, setAdminAuthed, clearAdminAuth } from './js/auth.js';
+             watchTournaments, createTournament, updateTournament, deleteTournament,
+             watchManagers, createManager, deleteManager, getManagerByUsername } from './js/db.js';
+    import { hashPassword, verifyPassword,
+             isAdminAuthed, setAdminAuthed, clearAdminAuth,
+             isManagerAuthed, setManagerAuthed, clearManagerAuth, getManagerName } from './js/auth.js';
 
     let allTournaments = [];
+    let allManagers    = [];
+    let currentRole    = 'admin';
 
-    // ── Auth ─────────────────────────────────────────────────
-    if (isAdminAuthed()) showPanel();
+    // ── Restore session ───────────────────────────────────────
+    if (isAdminAuthed())   showPanel('admin');
+    else if (isManagerAuthed()) showPanel('manager');
 
+    // ── Role toggle ───────────────────────────────────────────
+    window.setRole = function(role) {
+      currentRole = role;
+      const isAdmin = role === 'admin';
+      document.getElementById('role-admin').style.background   = isAdmin ? 'var(--primary)' : 'var(--surface2)';
+      document.getElementById('role-admin').style.color        = isAdmin ? '#fff' : 'var(--text2)';
+      document.getElementById('role-manager').style.background = isAdmin ? 'var(--surface2)' : 'var(--primary)';
+      document.getElementById('role-manager').style.color      = isAdmin ? 'var(--text2)' : '#fff';
+      document.getElementById('field-username').style.display  = isAdmin ? 'none' : 'flex';
+      document.getElementById('pw-label').textContent          = isAdmin ? '管理員密碼' : '密碼';
+    };
+
+    // ── Login ─────────────────────────────────────────────────
     window.login = async function() {
       const pw = document.getElementById('input-pw').value.trim();
       if (!pw) return;
-      const stored = await getAdminHash();
-      if (!stored) {
-        if (pw.length < 4) { showError('密碼至少 4 個字元'); return; }
-        await setAdminHash(await hashPassword(pw));
-        setAdminAuthed(); showPanel(); return;
+
+      if (currentRole === 'admin') {
+        const stored = await getAdminHash();
+        if (!stored) {
+          if (pw.length < 4) { showError('密碼至少 4 個字元'); return; }
+          await setAdminHash(await hashPassword(pw));
+          setAdminAuthed(); showPanel('admin'); return;
+        }
+        if (await verifyPassword(pw, stored)) { setAdminAuthed(); showPanel('admin'); }
+        else showError('密碼錯誤');
+      } else {
+        const username = document.getElementById('input-username').value.trim();
+        if (!username) { showError('請輸入帳號'); return; }
+        const mgr = await getManagerByUsername(username);
+        if (!mgr) { showError('帳號不存在'); return; }
+        if (await verifyPassword(pw, mgr.passwordHash)) {
+          setManagerAuthed(mgr.name); showPanel('manager');
+        } else {
+          showError('密碼錯誤');
+        }
       }
-      if (await verifyPassword(pw, stored)) { setAdminAuthed(); showPanel(); }
-      else showError('密碼錯誤');
     };
 
-    window.logout = function() { clearAdminAuth(); location.reload(); };
+    window.logout = function() {
+      clearAdminAuth(); clearManagerAuth(); location.reload();
+    };
 
-    function showPanel() {
+    function showPanel(role) {
       document.getElementById('auth-gate').style.display = 'none';
-      document.getElementById('admin-panel').style.display = 'block';
+      document.getElementById('main-panel').style.display = 'block';
+
+      if (role === 'admin') {
+        document.getElementById('panel-role-label').textContent = '系統管理者';
+        document.getElementById('section-managers').style.display = 'block';
+        watchManagers(ms => { allManagers = ms; renderManagers(); });
+      } else {
+        document.getElementById('panel-role-label').textContent = '賽程管理者：' + getManagerName();
+        document.getElementById('section-managers').style.display = 'none';
+      }
+
       watchTournaments(ts => { allTournaments = ts; renderTournaments(); });
     }
 
@@ -246,6 +343,48 @@
       }
     };
 
+    // ── Managers (admin only) ─────────────────────────────────
+    function renderManagers() {
+      const el = document.getElementById('managers-list');
+      if (allManagers.length === 0) {
+        el.innerHTML = '<div class="empty-state" style="padding:16px">尚無賽程管理者</div>';
+        return;
+      }
+      el.innerHTML = allManagers.map(m => `
+        <div class="card" style="cursor:default">
+          <div class="card-row">
+            <div style="flex:1;min-width:0">
+              <div class="card-title" style="font-size:0.95rem">${esc(m.name)}</div>
+              <div class="card-sub">帳號：${esc(m.username)}</div>
+            </div>
+            <button class="btn-icon danger" onclick="confirmDeleteManager('${m.id}')">×</button>
+          </div>
+        </div>`).join('');
+    }
+
+    window.submitManager = async function() {
+      const name     = document.getElementById('mgr-name').value.trim();
+      const username = document.getElementById('mgr-username').value.trim();
+      const pw       = document.getElementById('mgr-pw').value;
+      if (!name)     { showToast('請輸入名稱'); return; }
+      if (!username) { showToast('請輸入帳號'); return; }
+      if (pw.length < 4) { showToast('密碼至少 4 個字元'); return; }
+      if (allManagers.some(m => m.username === username)) { showToast('帳號已存在'); return; }
+      await createManager({ name, username, passwordHash: await hashPassword(pw) });
+      closeModal('modal-add-manager');
+      document.getElementById('mgr-name').value = '';
+      document.getElementById('mgr-username').value = '';
+      document.getElementById('mgr-pw').value = '';
+      showToast('管理者已新增');
+    };
+
+    window.confirmDeleteManager = async function(id) {
+      if (confirm('確定刪除此賽程管理者？')) {
+        await deleteManager(id);
+        showToast('已刪除');
+      }
+    };
+
     // ── Change Password ───────────────────────────────────────
     window.submitChangePw = async function() {
       const p1 = document.getElementById('new-pw1').value;
@@ -260,7 +399,7 @@
     };
 
     // ── Utilities ────────────────────────────────────────────
-    window.openModal  = id => {
+    window.openModal = id => {
       if (id === 'modal-add-tournament') {
         document.getElementById('t-year').value = new Date().getFullYear();
       }

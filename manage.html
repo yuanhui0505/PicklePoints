@@ -68,9 +68,9 @@
 
   <script type="module">
     import { watchTournament } from './js/db.js';
-    import { isAdminAuthed } from './js/auth.js';
+    import { isAnyAuthed } from './js/auth.js';
 
-    if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
+    if (!isAnyAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
 
     const params = new URLSearchParams(location.search);
     const tid = params.get('id');
