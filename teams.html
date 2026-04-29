@@ -160,6 +160,13 @@
 
       const p1 = allPlayers.find(p => p.id === p1id);
       const p2 = allPlayers.find(p => p.id === p2id);
+
+      const duplicate = allTeams.find(t => {
+        const ids = t.playerIds || [];
+        return ids.includes(p1id) && ids.includes(p2id);
+      });
+      if (duplicate) { showToast(`「${duplicate.name}」已包含相同的兩位選手`); return; }
+
       const name = document.getElementById('team-name').value.trim() || `${p1.name}/${p2.name}`;
       const category = detectCategory(p1.gender, p2.gender);
 
