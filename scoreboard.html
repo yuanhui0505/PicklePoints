@@ -23,7 +23,7 @@
     <div class="score-section">
       <div class="serving-label" id="team-label">載入中...</div>
       <div class="main-score" id="display-score">--</div>
-      <div class="score-hint">發球方 - 接球方 - 號碼</div>
+      <div class="score-hint" id="score-hint">發球方 - 接球方 - 號碼</div>
     </div>
 
     <div class="controls-section">
@@ -75,7 +75,9 @@
 
       if (isFirstLoad) {
         isFirstLoad = false;
-        if (!match.isFinished && match.scoreA === 0 && match.scoreB === 0) speak('0, 0, 2');
+        if (!match.isFinished && match.scoreA === 0 && match.scoreB === 0) {
+          speak(match.scoringSystem === 'rally' ? '0, 0' : '0, 0, 2');
+        }
         return;
       }
 
@@ -96,6 +98,8 @@
       document.getElementById('name-a').textContent = state.teamAName || '隊伍 A';
       document.getElementById('name-b').textContent = state.teamBName || '隊伍 B';
       document.getElementById('match-category').textContent = CAT_LABEL[state.category] || '';
+      document.getElementById('score-hint').textContent =
+        state.scoringSystem === 'rally' ? 'A 隊 - B 隊（落地得分制）' : '發球方 - 接球方 - 號碼';
 
       if (state.isFinished) {
         const winName = state.winnerId === 'A' ? state.teamAName : state.teamBName;
@@ -130,11 +134,12 @@
 
     window.resetMatch = async function() {
       if (!confirm('確定要重置此場比賽嗎？')) return;
+      const isRally = state?.scoringSystem === 'rally';
       await updateMatch(tid, mid, {
-        scoreA: 0, scoreB: 0, serverNum: 2, servingTeam: 'A',
+        scoreA: 0, scoreB: 0, serverNum: isRally ? 1 : 2, servingTeam: 'A',
         isFinished: false, winnerId: null, resultRecorded: false, history: []
       });
-      speak('0, 0, 2');
+      speak(isRally ? '0, 0' : '0, 0, 2');
     };
 
     window.goBack = function() {

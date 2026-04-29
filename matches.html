@@ -52,6 +52,24 @@
         <div class="input-label">輪次</div>
         <input type="number" id="mc-round" value="1" min="1">
       </div>
+      <div class="input-group">
+        <div class="input-label">計分方式</div>
+        <select id="mc-scoring" onchange="onScoringChange()">
+          <option value="sideout">發球得分制</option>
+          <option value="rally">落地得分制</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <div class="input-label">勝利得分</div>
+        <input type="number" id="mc-win-score" value="11" min="1">
+      </div>
+      <div class="input-group">
+        <div class="input-label">Deuce 制</div>
+        <select id="mc-deuce">
+          <option value="1">是（需多贏 2 分才算勝）</option>
+          <option value="0">否（先到目標分即勝）</option>
+        </select>
+      </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal('modal-add-match')">取消</button>
         <button class="btn-primary" onclick="submitMatch()">新增</button>
@@ -119,6 +137,11 @@
       }).join('');
     }
 
+    window.onScoringChange = function() {
+      const scoring = document.getElementById('mc-scoring').value;
+      document.getElementById('mc-win-score').value = scoring === 'rally' ? 21 : 11;
+    };
+
     window.populateTeamSelects = function() {
       const cat = document.getElementById('mc-category').value;
       const filtered = cat ? allTeams.filter(t => t.category === cat) : allTeams;
@@ -160,7 +183,10 @@
         teamAId: aId, teamAName: teamA.name,
         teamBId: bId, teamBName: teamB.name,
         category,
-        round: parseInt(document.getElementById('mc-round').value) || 1
+        round: parseInt(document.getElementById('mc-round').value) || 1,
+        scoringSystem: document.getElementById('mc-scoring').value,
+        winScore: parseInt(document.getElementById('mc-win-score').value) || 11,
+        deuce: document.getElementById('mc-deuce').value === '1'
       });
       closeModal('modal-add-match');
       showToast('比賽已新增');

@@ -70,10 +70,14 @@ export function watchMatch(tid, mid, cb) {
   });
 }
 
-export async function createMatch(tid, { teamAId, teamAName, teamBId, teamBName, category, round = 1 }) {
+export async function createMatch(tid, { teamAId, teamAName, teamBId, teamBName, category, round = 1, scoringSystem = 'sideout', winScore, deuce = true }) {
+  const defaultWinScore = scoringSystem === 'rally' ? 21 : 11;
   return addDoc(collection(db, 'tournaments', tid, 'matches'), {
-    teamAId, teamAName, teamBId, teamBName, category, round,
-    scoreA: 0, scoreB: 0, serverNum: 2, servingTeam: 'A',
+    teamAId, teamAName, teamBId, teamBName, category, round, scoringSystem,
+    winScore: winScore ?? defaultWinScore, deuce,
+    scoreA: 0, scoreB: 0,
+    serverNum: scoringSystem === 'rally' ? 1 : 2,
+    servingTeam: 'A',
     isFinished: false, winnerId: null, resultRecorded: false, history: [],
     createdAt: serverTimestamp()
   });
