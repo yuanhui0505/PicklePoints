@@ -51,7 +51,7 @@
   </div>
 
   <script type="module">
-    import { watchMatch, updateMatch, addMatchResult } from './js/db.js';
+    import { watchMatch, updateMatch, addMatchResult, checkAndCloseTournament } from './js/db.js';
     import { applyRallyWin, applyUndo, getDisplayScore, getSpeechScore } from './js/scoring.js';
     import { speak } from './js/speech.js';
     import { isAnyAuthed } from './js/auth.js';
@@ -87,6 +87,7 @@
         const winTeamId  = match.winnerId === 'A' ? match.teamAId : match.teamBId;
         const loseTeamId = match.winnerId === 'A' ? match.teamBId : match.teamAId;
         await addMatchResult(tid, winTeamId, loseTeamId).catch(console.error);
+        await checkAndCloseTournament(tid).catch(console.error);
       }
     });
 

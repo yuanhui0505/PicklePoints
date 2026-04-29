@@ -57,6 +57,15 @@ export async function addMatchResult(tid, winnerId, loserId) {
   await updateTeam(tid, loserId, { points: increment(1), losses: increment(1) });
 }
 
+export async function checkAndCloseTournament(tid) {
+  const snap = await getDocs(collection(db, 'tournaments', tid, 'matches'));
+  const matches = snap.docs.map(d => d.data());
+  if (matches.length === 0) return;
+  if (matches.every(m => m.isFinished)) {
+    await updateTournament(tid, { isActive: false });
+  }
+}
+
 // --- Matches ---
 
 export function watchMatches(tid, cb) {
