@@ -33,13 +33,13 @@
       <!-- Manager username (hidden for admin) -->
       <div class="input-group" id="field-username" style="display:none">
         <div class="input-label">帳號</div>
-        <input type="text" id="input-username" placeholder="輸入帳號"
+        <input type="text" id="input-username" placeholder="輸入帳號" autocomplete="off"
                onkeydown="if(event.key==='Enter')document.getElementById('input-pw').focus()">
       </div>
 
       <div class="input-group">
         <div class="input-label" id="pw-label">管理員密碼</div>
-        <input type="password" id="input-pw" placeholder="輸入密碼"
+        <input type="password" id="input-pw" placeholder="輸入密碼" autocomplete="new-password"
                onkeydown="if(event.key==='Enter')login()">
       </div>
 
