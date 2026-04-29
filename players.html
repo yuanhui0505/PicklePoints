@@ -83,7 +83,9 @@
 
     if (!isAdminAuthed()) { location.href = 'admin.html'; throw new Error('unauthed'); }
 
-    watchGlobalPlayers(renderPlayers);
+    let allPlayers = [];
+
+    watchGlobalPlayers(players => { allPlayers = players; renderPlayers(players); });
 
     function renderPlayers(players) {
       const el = document.getElementById('players-list');
@@ -107,7 +109,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
               <button class="btn-ghost" style="font-size:0.8rem;padding:6px 10px"
-                      onclick="openEdit('${p.id}','${esc(p.name)}','${p.gender}','${esc(p.duprId||'')}')">編輯</button>
+                      onclick="openEdit('${p.id}')">編輯</button>
               <button class="btn-icon danger" onclick="confirmDelete('${p.id}')">×</button>
             </div>
           </div>
@@ -128,11 +130,13 @@
       showToast('選手已新增');
     };
 
-    window.openEdit = function(pid, name, gender, duprId) {
+    window.openEdit = function(pid) {
+      const p = allPlayers.find(x => x.id === pid);
+      if (!p) return;
       document.getElementById('ep-id').value     = pid;
-      document.getElementById('ep-name').value   = name;
-      document.getElementById('ep-gender').value = gender;
-      document.getElementById('ep-dupr').value   = duprId;
+      document.getElementById('ep-name').value   = p.name;
+      document.getElementById('ep-gender').value = p.gender;
+      document.getElementById('ep-dupr').value   = p.duprId || '';
       openModal('modal-edit-player');
     };
 

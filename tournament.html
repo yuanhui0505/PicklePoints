@@ -42,8 +42,6 @@
     <div id="leaderboard-body"><div class="empty-state">載入中...</div></div>
   </div>
 
-  <div id="toast" class="toast"></div>
-
   <script type="module">
     import { watchTournament, watchMatches, watchTeams } from './js/db.js';
 
@@ -106,8 +104,7 @@
         el.innerHTML = '<div class="empty-state">尚無隊伍</div>';
         return;
       }
-      const sorted = [...list].sort((a, b) => (b.points || 0) - (a.points || 0));
-      const rows = sorted.map((t, i) => `
+      const rows = list.map((t, i) => `
         <tr class="rank-${i + 1}">
           <td><span class="rank-num">${i + 1}</span></td>
           <td>
@@ -151,13 +148,6 @@
     window.goToScoreboard = function(mid) {
       location.href = `watch.html?tid=${tid}&mid=${mid}`;
     };
-
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
-    }
 
     function esc(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

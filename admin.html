@@ -242,7 +242,6 @@
     window.confirmDeleteTournament = async function(id) {
       if (confirm('確定刪除此賽事？隊伍和比賽資料不會自動刪除。')) {
         await deleteTournament(id);
-        if (selectedTid === id) closeManageSections();
         showToast('已刪除');
       }
     };
