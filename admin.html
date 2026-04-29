@@ -200,12 +200,30 @@
     let allManagers    = [];
     let currentRole    = 'admin';
 
+    // 所有 onclick handler 先掛上 window（function declaration 會 hoist，不受後面程式碼出錯影響）
+    window.setRole               = setRole;
+    window.login                 = login;
+    window.logout                = logout;
+    window.submitTournament      = submitTournament;
+    window.openEditTournament    = openEditTournament;
+    window.submitEditTournament  = submitEditTournament;
+    window.confirmDeleteTournament = confirmDeleteTournament;
+    window.submitManager         = submitManager;
+    window.confirmDeleteManager  = confirmDeleteManager;
+    window.submitChangePw        = submitChangePw;
+    window.openModal             = openModal;
+    window.closeModal            = closeModal;
+
     // ── Restore session ───────────────────────────────────────
-    if (isAdminAuthed())   showPanel('admin');
+    if (isAdminAuthed())        showPanel('admin');
     else if (isManagerAuthed()) showPanel('manager');
 
+    getAdminHash().then(h => {
+      if (!h) document.getElementById('pw-label').textContent = '設定管理員密碼（首次使用）';
+    });
+
     // ── Role toggle ───────────────────────────────────────────
-    window.setRole = function(role) {
+    function setRole(role) {
       currentRole = role;
       const isAdmin = role === 'admin';
       document.getElementById('role-admin').style.background   = isAdmin ? 'var(--primary)' : 'var(--surface2)';
@@ -214,10 +232,10 @@
       document.getElementById('role-manager').style.color      = isAdmin ? 'var(--text2)' : '#fff';
       document.getElementById('field-username').style.display  = isAdmin ? 'none' : 'flex';
       document.getElementById('pw-label').textContent          = isAdmin ? '管理員密碼' : '密碼';
-    };
+    }
 
     // ── Login ─────────────────────────────────────────────────
-    window.login = async function() {
+    async function login() {
       const pw = document.getElementById('input-pw').value.trim();
       if (!pw) return;
 
@@ -241,11 +259,9 @@
           showError('密碼錯誤');
         }
       }
-    };
+    }
 
-    window.logout = function() {
-      clearAdminAuth(); clearManagerAuth(); location.reload();
-    };
+    function logout() { clearAdminAuth(); clearManagerAuth(); location.reload(); }
 
     function showPanel(role) {
       document.getElementById('auth-gate').style.display = 'none';
@@ -259,7 +275,6 @@
         document.getElementById('panel-role-label').textContent = '賽程管理者：' + getManagerName();
         document.getElementById('section-managers').style.display = 'none';
       }
-
       watchTournaments(ts => { allTournaments = ts; renderTournaments(); });
     }
 
@@ -297,7 +312,7 @@
         </div>`).join('');
     }
 
-    window.submitTournament = async function() {
+    async function submitTournament() {
       const name = document.getElementById('t-name').value.trim();
       if (!name) { showToast('請輸入賽事名稱'); return; }
       await createTournament({
@@ -309,20 +324,20 @@
       document.getElementById('t-name').value = '';
       document.getElementById('t-desc').value = '';
       showToast('賽事已建立');
-    };
+    }
 
-    window.openEditTournament = function(id) {
+    function openEditTournament(id) {
       const t = allTournaments.find(x => x.id === id);
       if (!t) return;
-      document.getElementById('et-id').value    = id;
-      document.getElementById('et-name').value  = t.name;
-      document.getElementById('et-year').value  = t.year || '';
-      document.getElementById('et-desc').value  = t.description || '';
+      document.getElementById('et-id').value     = id;
+      document.getElementById('et-name').value   = t.name;
+      document.getElementById('et-year').value   = t.year || '';
+      document.getElementById('et-desc').value   = t.description || '';
       document.getElementById('et-active').value = t.isActive ? '1' : '0';
       openModal('modal-edit-tournament');
-    };
+    }
 
-    window.submitEditTournament = async function() {
+    async function submitEditTournament() {
       const id   = document.getElementById('et-id').value;
       const name = document.getElementById('et-name').value.trim();
       if (!name) { showToast('請輸入賽事名稱'); return; }
@@ -334,14 +349,14 @@
       });
       closeModal('modal-edit-tournament');
       showToast('已儲存');
-    };
+    }
 
-    window.confirmDeleteTournament = async function(id) {
+    async function confirmDeleteTournament(id) {
       if (confirm('確定刪除此賽事？隊伍和比賽資料不會自動刪除。')) {
         await deleteTournament(id);
         showToast('已刪除');
       }
-    };
+    }
 
     // ── Managers (admin only) ─────────────────────────────────
     function renderManagers() {
@@ -362,31 +377,31 @@
         </div>`).join('');
     }
 
-    window.submitManager = async function() {
+    async function submitManager() {
       const name     = document.getElementById('mgr-name').value.trim();
       const username = document.getElementById('mgr-username').value.trim();
       const pw       = document.getElementById('mgr-pw').value;
-      if (!name)     { showToast('請輸入名稱'); return; }
-      if (!username) { showToast('請輸入帳號'); return; }
+      if (!name)         { showToast('請輸入名稱'); return; }
+      if (!username)     { showToast('請輸入帳號'); return; }
       if (pw.length < 4) { showToast('密碼至少 4 個字元'); return; }
       if (allManagers.some(m => m.username === username)) { showToast('帳號已存在'); return; }
       await createManager({ name, username, passwordHash: await hashPassword(pw) });
       closeModal('modal-add-manager');
-      document.getElementById('mgr-name').value = '';
+      document.getElementById('mgr-name').value     = '';
       document.getElementById('mgr-username').value = '';
-      document.getElementById('mgr-pw').value = '';
+      document.getElementById('mgr-pw').value       = '';
       showToast('管理者已新增');
-    };
+    }
 
-    window.confirmDeleteManager = async function(id) {
+    async function confirmDeleteManager(id) {
       if (confirm('確定刪除此賽程管理者？')) {
         await deleteManager(id);
         showToast('已刪除');
       }
-    };
+    }
 
     // ── Change Password ───────────────────────────────────────
-    window.submitChangePw = async function() {
+    async function submitChangePw() {
       const p1 = document.getElementById('new-pw1').value;
       const p2 = document.getElementById('new-pw2').value;
       if (p1.length < 4) { showToast('密碼至少 4 個字元'); return; }
@@ -396,16 +411,17 @@
       document.getElementById('new-pw1').value = '';
       document.getElementById('new-pw2').value = '';
       showToast('密碼已更新');
-    };
+    }
 
     // ── Utilities ────────────────────────────────────────────
-    window.openModal = id => {
+    function openModal(id) {
       if (id === 'modal-add-tournament') {
         document.getElementById('t-year').value = new Date().getFullYear();
       }
       document.getElementById(id).classList.add('open');
-    };
-    window.closeModal = id => document.getElementById(id).classList.remove('open');
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -416,10 +432,6 @@
     function esc(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-
-    getAdminHash().then(h => {
-      if (!h) document.getElementById('pw-label').textContent = '設定管理員密碼（首次使用）';
-    });
   </script>
 </body>
 </html>
