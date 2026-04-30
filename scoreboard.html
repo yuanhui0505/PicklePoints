@@ -115,14 +115,16 @@
       if (!state || state.isFinished) return;
       requestWakeLock();
       const next = applyRallyWin(state, winner);
-      const { id, ...data } = next;
-      await updateMatch(tid, mid, data);
+      // Speak before await — iOS Safari requires speechSynthesis.speak() to be called
+      // synchronously within a user gesture handler, before any await.
       if (!next.isFinished) {
         speak(getSpeechScore(next));
       } else {
         const winName = next.winnerId === 'A' ? next.teamAName : next.teamBName;
         speak('比賽結束，' + winName + ' 獲勝');
       }
+      const { id, ...data } = next;
+      await updateMatch(tid, mid, data);
     };
 
     window.undo = async function() {
@@ -136,11 +138,11 @@
     window.resetMatch = async function() {
       if (!confirm('確定要重置此場比賽嗎？')) return;
       const isRally = state?.scoringSystem === 'rally';
+      speak(isRally ? '0, 0' : '0, 0, 2');
       await updateMatch(tid, mid, {
         scoreA: 0, scoreB: 0, serverNum: isRally ? 1 : 2, servingTeam: 'A',
         isFinished: false, winnerId: null, resultRecorded: false, history: []
       });
-      speak(isRally ? '0, 0' : '0, 0, 2');
     };
 
     window.goBack = function() {
